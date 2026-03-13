@@ -1,0 +1,15 @@
+.git
+.venv
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.claude
+tests/
+docs/
+profiles/
+profiles-cybus/
+*.pcap
+*.png
+*.pdf
+*.md
+!README.md
