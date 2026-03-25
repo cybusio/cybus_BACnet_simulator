@@ -77,7 +77,6 @@ services:
       BACNET_METRICS_PORT: "9105"
     volumes:
       - ./profiles-cybus/miele_overloaded.yaml:/app/profiles/miele_overloaded.yaml:ro
-      # Parent profile mounted outside profiles dir so load_all doesn't glob it
       - ./profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
       - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
       - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

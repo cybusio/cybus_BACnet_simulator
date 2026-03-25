@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# Generate Connectware SCF from a simulator profile.
-# Resolves extends chains and supports object_padding for scaling.
+# Generate a Connectware SCF (Service Commissioning File) from a simulator profile.
 #
-# Usage: ./scripts/generate-scf.sh <ip> <profile.yaml> [name] [endpoints] [poll-interval]
-# Output: scf/<name>.yml
+# The profile YAML is the single source of truth — port, device ID, objects, and
+# network constraints are all read from it. Constrained devices (noSegmentation,
+# small max_apdu) automatically get maxApdu/segmentation overrides in the SCF.
+# If endpoint count exceeds the profile's base objects, realistic domain-specific
+# objects are generated using the profile's padding template.
+#
+# Output: scf/<name>.yml — ready to upload to Connectware UI or CLI.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -14,12 +18,11 @@ if [[ $# -lt 2 ]]; then
   cat <<'USAGE'
 Usage: ./scripts/generate-scf.sh <ip> <profile.yaml> [name] [endpoints] [poll-interval]
 
-  ip              Connectware host IP
+  ip              Simulator IP as seen by the protocol-mapper container (e.g., 172.18.0.1)
   profile.yaml    Simulator profile (in profiles-cybus/)
-  name            SCF name (default: profile filename)
-  endpoints       Target endpoint count (default: all profile objects)
-                  If > profile objects, auto-pads using the profile's template
-  poll-interval   Endpoint poll interval in ms (default: 1000)
+  name            SCF service name (default: profile filename without extension)
+  endpoints       Target endpoint count (0 = all profile objects, >0 = scale with padding)
+  poll-interval   How often CW polls each endpoint in ms (default: 1000)
 
 Examples:
   ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/newlift_gateway.yaml

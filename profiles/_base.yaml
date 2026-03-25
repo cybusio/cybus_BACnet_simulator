@@ -1,0 +1,13 @@
+device:
+  vendor: Generic
+  vendor_name: "Generic BACnet Device"
+  model_name: "Simulator"
+  firmware_revision: "1.0"
+  application_software_version: "1.0.0"
+  protocol_revision: 22
+
+network:
+  max_apdu: 1476
+  segmentation: segmentedBoth
+
+objects: []

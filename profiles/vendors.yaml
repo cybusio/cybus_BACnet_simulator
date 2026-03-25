@@ -1,0 +1,13 @@
+# ASHRAE BACnet vendor ID registry (subset for shipped profiles)
+vendors:
+  MIELE: 218
+  Siemens: 7
+  Trane: 98
+  JohnsonControls: 5
+  Carrier: 236
+  Tridium: 222
+  Honeywell: 15
+  Schneider: 10
+  ABB: 216
+  MBS: 50
+  Generic: 0
