@@ -58,6 +58,7 @@ asyncio_mode = "auto"
 
 [dependency-groups]
 dev = [
+    "BAC0>=22.9",
     "mypy>=1.14",
     "pre-commit>=4.5.1",
     "pytest>=8.0",

@@ -1,0 +1,324 @@
+# =============================================================================
+# GreenEnergy eBmgr — district heating energy manager (abort code 11)
+# =============================================================================
+#
+# Simulates a district heating building energy manager with BACnet/IP:
+#
+#   - protocol_revision 24: modern firmware
+#   - max_apdu 480: standard embedded APDU size
+#   - noSegmentation: cannot segment responses
+#   - abort_reason 11: apduTooLong — older Cybus C++ stacks show
+#     "Reserved for Use by ASHRAE" instead of the actual reason
+#   - 44 objects: primary circuit, 2 heating circuits, DHW, buffer storage
+#
+# Behaviors this profile triggers:
+#   1. Individual property reads (AV, BV, AI) work normally
+#   2. Large responses (object-list, RPM with many objects) abort with code 11
+#   3. WhoIs/IAm discovery works normally
+#   4. Device object reads work normally
+#
+# Tuning:
+#   - Set force_abort to true to abort ALL non-device reads (not just oversized)
+#   - Set abort_reason to 0 to disable abort behavior
+#   - Set abort_reason to 1 for bufferOverflow instead
+#   - Increase max_apdu to 1476 and set segmentation to segmentedBoth
+#     for fully compliant operation
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47809
+  device_id: 2000001
+
+device:
+  vendor: Generic
+  vendor_name: "GreenEnergy Systems"
+  model_name: "GreenEnergy-eBmgr"
+  firmware_revision: "3.5"
+  application_software_version: "3.5.2"
+  protocol_revision: 24
+
+network:
+  max_apdu: 480
+  segmentation: noSegmentation
+
+realism:
+  response_delay_ms: 15
+  response_jitter_ms: 10
+  tsm_pool_size: 16           # modern ARM controller — larger pool than legacy devices
+  abort_reason: 11  # apduTooLong — newer firmware sends code 11; older Cybus C++ stacks don't recognize codes >9
+  # force_abort: false (default) — ABORTs trigger naturally when response exceeds max_apdu
+
+objects:
+  # --- LifeBit heartbeat ---
+  - object_type: BinaryValue
+    instance: 1
+    name: LifeBit
+    default: true
+
+  # --- Primary circuit writable channels ---
+  - object_type: AnalogValue
+    instance: 1
+    name: supply_temp
+    units: degreesCelsius
+    default: 72.4
+
+  - object_type: AnalogValue
+    instance: 2
+    name: return_temp
+    units: degreesCelsius
+    default: 45.8
+
+  - object_type: AnalogValue
+    instance: 3
+    name: flow_rate
+    units: litersPerSecond
+    default: 0.85
+
+  - object_type: AnalogValue
+    instance: 4
+    name: heat_output_kw
+    units: kilowatts
+    default: 95.2
+
+  - object_type: AnalogValue
+    instance: 5
+    name: setpoint_temp
+    units: degreesCelsius
+    default: 70.0
+
+  - object_type: AnalogValue
+    instance: 6
+    name: valve_position
+    units: percent
+    default: 68.0
+
+  # --- Heating circuit 1 — radiator circuit ---
+  - object_type: AnalogInput
+    instance: 1
+    name: circuit1_supply_temp
+    units: degreesCelsius
+    default: 55.3
+
+  - object_type: AnalogInput
+    instance: 2
+    name: circuit1_return_temp
+    units: degreesCelsius
+    default: 38.2
+
+  - object_type: AnalogInput
+    instance: 3
+    name: circuit1_flow_rate
+    units: litersPerSecond
+    default: 0.42
+
+  - object_type: AnalogInput
+    instance: 4
+    name: circuit1_pump_speed
+    units: percent
+    default: 65.0
+
+  - object_type: AnalogInput
+    instance: 5
+    name: circuit1_valve_pos
+    units: percent
+    default: 72.0
+
+  - object_type: AnalogInput
+    instance: 6
+    name: circuit1_heat_kw
+    units: kilowatts
+    default: 29.8
+
+  # --- Heating circuit 2 — underfloor heating ---
+  - object_type: AnalogInput
+    instance: 7
+    name: circuit2_supply_temp
+    units: degreesCelsius
+    default: 35.1
+
+  - object_type: AnalogInput
+    instance: 8
+    name: circuit2_return_temp
+    units: degreesCelsius
+    default: 28.4
+
+  - object_type: AnalogInput
+    instance: 9
+    name: circuit2_flow_rate
+    units: litersPerSecond
+    default: 0.38
+
+  - object_type: AnalogInput
+    instance: 10
+    name: circuit2_pump_speed
+    units: percent
+    default: 55.0
+
+  - object_type: AnalogInput
+    instance: 11
+    name: circuit2_valve_pos
+    units: percent
+    default: 48.0
+
+  - object_type: AnalogInput
+    instance: 12
+    name: circuit2_heat_kw
+    units: kilowatts
+    default: 10.5
+
+  # --- DHW (domestic hot water) ---
+  - object_type: AnalogInput
+    instance: 13
+    name: dhw_temp_top
+    units: degreesCelsius
+    default: 58.2
+
+  - object_type: AnalogInput
+    instance: 14
+    name: dhw_temp_bottom
+    units: degreesCelsius
+    default: 42.5
+
+  - object_type: AnalogInput
+    instance: 15
+    name: dhw_setpoint
+    units: degreesCelsius
+    default: 60.0
+
+  - object_type: AnalogInput
+    instance: 16
+    name: dhw_charge_pump
+    units: percent
+    default: 0.0
+
+  - object_type: AnalogInput
+    instance: 17
+    name: dhw_circ_pump
+    units: percent
+    default: 45.0
+
+  # --- Outdoor / ambient ---
+  - object_type: AnalogInput
+    instance: 18
+    name: outdoor_temp
+    units: degreesCelsius
+    default: 4.2
+
+  - object_type: AnalogInput
+    instance: 19
+    name: outdoor_temp_avg_24h
+    units: degreesCelsius
+    default: 5.8
+
+  # --- Buffer storage ---
+  - object_type: AnalogInput
+    instance: 20
+    name: buffer_temp_top
+    units: degreesCelsius
+    default: 68.5
+
+  - object_type: AnalogInput
+    instance: 21
+    name: buffer_temp_mid
+    units: degreesCelsius
+    default: 52.3
+
+  - object_type: AnalogInput
+    instance: 22
+    name: buffer_temp_bottom
+    units: degreesCelsius
+    default: 41.8
+
+  # --- Energy metering ---
+  - object_type: AnalogInput
+    instance: 23
+    name: total_heat_energy
+    units: kilowattHours
+    default: 285430.0
+
+  - object_type: AnalogInput
+    instance: 24
+    name: daily_heat_energy
+    units: kilowattHours
+    default: 842.5
+
+  - object_type: AnalogInput
+    instance: 25
+    name: monthly_heat_energy
+    units: kilowattHours
+    default: 18650.0
+
+  # --- System ---
+  - object_type: AnalogInput
+    instance: 26
+    name: operating_hours
+    units: hours
+    default: 14520.0
+
+  - object_type: AnalogInput
+    instance: 27
+    name: primary_pump_speed
+    units: percent
+    default: 75.0
+
+  - object_type: AnalogInput
+    instance: 28
+    name: primary_supply_pressure
+    units: kilopascals
+    default: 350.0
+
+  - object_type: AnalogInput
+    instance: 29
+    name: primary_return_pressure
+    units: kilopascals
+    default: 180.0
+
+  - object_type: AnalogInput
+    instance: 30
+    name: differential_pressure
+    units: kilopascals
+    default: 170.0
+
+  - object_type: AnalogInput
+    instance: 31
+    name: primary_flow_temp
+    units: degreesCelsius
+    default: 78.5
+
+  # --- Alarms ---
+  - object_type: BinaryInput
+    instance: 1
+    name: primary_pump_fault
+    default: false
+
+  - object_type: BinaryInput
+    instance: 2
+    name: circuit1_pump_fault
+    default: false
+
+  - object_type: BinaryInput
+    instance: 3
+    name: circuit2_pump_fault
+    default: false
+
+  - object_type: BinaryInput
+    instance: 4
+    name: dhw_pump_fault
+    default: false
+
+  - object_type: BinaryInput
+    instance: 5
+    name: low_pressure_alarm
+    default: false
+
+  - object_type: BinaryInput
+    instance: 6
+    name: high_temp_alarm
+    default: false
+
+# Uncomment to scale to 194 objects (44 base + 150 padded)
+# object_padding:
+#   template: district_heating
+#   count: 150

@@ -1,0 +1,652 @@
+# =============================================================================
+# NewLift MBS UGW Gateway — elevator BACnet/IP gateway
+# =============================================================================
+#
+# Simulates an MBS GmbH Krefeld Universal Gateway (UGW) translating a
+# NewLift elevator controller's FST bus to BACnet/IP:
+#
+#   - DeviceID 2000 (as per original bac1.cfg)
+#   - VendorID 50: MBS GmbH Krefeld (ASHRAE registered)
+#   - protocol_revision 14: typical for UGW firmware 1.1
+#   - max_apdu 1476, segmentedBoth: full BACnet/IP compliance
+#   - 106 objects: production bac1.txt (97) + maxx extended I/O (9)
+#
+# Object map mirrors the real NewLift FST→BACnet translation:
+#   - 1 BI:  controller failure
+#   - 7 AV:  floor position, speed, temperature, counters
+#   - 90 BV: status flags, safety circuits, modes, faults, extended I/O
+#   - 6 MV:  directions (3-state), door status (6-state), operating mode (16-state)
+#   - 1 MO:  evacuation command (4-state, writable)
+#   - 1 BO:  lift-off command (writable)
+#
+# Default state: idle elevator at floor 3, doors closed, normal mode,
+# all safety circuits OK, no faults.
+#
+# Tuning:
+#   - response_delay_ms 5: UGW is a fast embedded Linux gateway
+#   - No abort behavior (abort_reason 0): UGW supports full segmentation
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47812
+  device_id: 2000
+
+device:
+  vendor: MBS
+  vendor_name: "MBS GmbH Krefeld"
+  model_name: "UGW"
+  firmware_revision: "1.1"
+  application_software_version: "1.1.0"
+  protocol_revision: 14
+
+network:
+  max_apdu: 1476
+  segmentation: segmentedBoth
+
+realism:
+  response_delay_ms: 5
+  response_jitter_ms: 3
+  tsm_pool_size: 0
+  abort_reason: 0  # disabled — UGW supports full segmentation
+
+objects:
+  # === BI — controller failure ===
+  - object_type: BinaryInput
+    instance: 0
+    name: Failure FST
+    default: false
+
+  # === AV — analog values (floor, position, speed, counters) ===
+  - object_type: AnalogValue
+    instance: 1
+    name: current floor
+    units: noUnits
+    default: 3
+
+  - object_type: AnalogValue
+    instance: 4
+    name: car position
+    units: noUnits
+    default: 3
+
+  - object_type: AnalogValue
+    instance: 5
+    name: car un-level
+    units: noUnits
+    default: 0
+
+  - object_type: AnalogValue
+    instance: 82
+    name: lift speed
+    units: noUnits
+    default: 0
+
+  - object_type: AnalogValue
+    instance: 83
+    name: control cabinet temperature
+    units: noUnits
+    default: 28.5
+
+  - object_type: AnalogValue
+    instance: 84
+    name: total trip count
+    units: noUnits
+    default: 142850
+
+  - object_type: AnalogValue
+    instance: 85
+    name: total operating hours
+    units: noUnits
+    default: 48520
+
+  # === BV — binary status flags ===
+
+  # --- Car position ---
+  - object_type: BinaryValue
+    instance: 2
+    name: car level
+    default: true
+
+  - object_type: BinaryValue
+    instance: 3
+    name: car in zone
+    default: true
+
+  # --- Car systems ---
+  - object_type: BinaryValue
+    instance: 9
+    name: car light on
+    default: true
+
+  - object_type: BinaryValue
+    instance: 10
+    name: car light status
+    default: true
+
+  # --- Door A ---
+  - object_type: BinaryValue
+    instance: 12
+    name: door A reversing
+    default: false
+
+  - object_type: BinaryValue
+    instance: 13
+    name: door A blocked
+    default: false
+
+  - object_type: BinaryValue
+    instance: 14
+    name: door A close fail
+    default: false
+
+  - object_type: BinaryValue
+    instance: 15
+    name: door A lock fail
+    default: false
+
+  - object_type: BinaryValue
+    instance: 16
+    name: door A forced closure
+    default: false
+
+  # --- Door B ---
+  - object_type: BinaryValue
+    instance: 18
+    name: door B reversing
+    default: false
+
+  - object_type: BinaryValue
+    instance: 19
+    name: door B blocked
+    default: false
+
+  - object_type: BinaryValue
+    instance: 20
+    name: door B close fail
+    default: false
+
+  - object_type: BinaryValue
+    instance: 21
+    name: door B lock fail
+    default: false
+
+  - object_type: BinaryValue
+    instance: 22
+    name: door B forced closure
+    default: false
+
+  # --- Door sensors ---
+  - object_type: BinaryValue
+    instance: 23
+    name: photocell door A activated
+    default: false
+
+  - object_type: BinaryValue
+    instance: 24
+    name: reversing switch door A activated
+    default: false
+
+  - object_type: BinaryValue
+    instance: 25
+    name: photocell door B activated
+    default: false
+
+  - object_type: BinaryValue
+    instance: 26
+    name: reversing switch door B activated
+    default: false
+
+  # --- Safety circuits (true = closed/safe) ---
+  - object_type: BinaryValue
+    instance: 27
+    name: safety circuit emergency stop car
+    default: true
+
+  - object_type: BinaryValue
+    instance: 28
+    name: safety circuit emergency stop shaft
+    default: true
+
+  - object_type: BinaryValue
+    instance: 29
+    name: safety circuit door-C gate
+    default: true
+
+  - object_type: BinaryValue
+    instance: 30
+    name: safety circuit door-B gate
+    default: true
+
+  - object_type: BinaryValue
+    instance: 31
+    name: safety circuit door-A gate
+    default: true
+
+  - object_type: BinaryValue
+    instance: 32
+    name: safety circuit door-A lock
+    default: true
+
+  - object_type: BinaryValue
+    instance: 33
+    name: safety circuit door-B lock
+    default: true
+
+  - object_type: BinaryValue
+    instance: 34
+    name: safety circuit closed
+    default: true
+
+  # --- Load ---
+  - object_type: BinaryValue
+    instance: 35
+    name: car empty load
+    default: true
+
+  - object_type: BinaryValue
+    instance: 36
+    name: car full load
+    default: false
+
+  - object_type: BinaryValue
+    instance: 37
+    name: car over load
+    default: false
+
+  # --- Operational status ---
+  - object_type: BinaryValue
+    instance: 38
+    name: command present
+    default: false
+
+  - object_type: BinaryValue
+    instance: 39
+    name: emergency call activated
+    default: false
+
+  - object_type: BinaryValue
+    instance: 40
+    name: lift available
+    default: true
+
+  - object_type: BinaryValue
+    instance: 41
+    name: out of order
+    default: false
+
+  - object_type: BinaryValue
+    instance: 42
+    name: park drive active
+    default: false
+
+  - object_type: BinaryValue
+    instance: 43
+    name: loading value
+    default: false
+
+  # --- Faults ---
+  - object_type: BinaryValue
+    instance: 44
+    name: collective fault
+    default: false
+
+  - object_type: BinaryValue
+    instance: 45
+    name: door fault
+    default: false
+
+  - object_type: BinaryValue
+    instance: 46
+    name: drive fault
+    default: false
+
+  - object_type: BinaryValue
+    instance: 47
+    name: controller fault
+    default: false
+
+  - object_type: BinaryValue
+    instance: 48
+    name: photocell door-A fault
+    default: false
+
+  - object_type: BinaryValue
+    instance: 49
+    name: photocell door-B fault
+    default: false
+
+  - object_type: BinaryValue
+    instance: 50
+    name: car light fault
+    default: false
+
+  - object_type: BinaryValue
+    instance: 51
+    name: spare fault 2
+    default: false
+
+  - object_type: BinaryValue
+    instance: 52
+    name: spare fault 3
+    default: false
+
+  - object_type: BinaryValue
+    instance: 53
+    name: spare fault 4
+    default: false
+
+  # --- Fire/emergency ---
+  - object_type: BinaryValue
+    instance: 54
+    name: landing calls off
+    default: false
+
+  - object_type: BinaryValue
+    instance: 55
+    name: fire-recall
+    default: false
+
+  - object_type: BinaryValue
+    instance: 56
+    name: fire-recall drive active
+    default: false
+
+  - object_type: BinaryValue
+    instance: 57
+    name: fire-recall arrived in target floor
+    default: false
+
+  - object_type: BinaryValue
+    instance: 58
+    name: fireman-service
+    default: false
+
+  - object_type: BinaryValue
+    instance: 59
+    name: fireman-service in main floor
+    default: false
+
+  - object_type: BinaryValue
+    instance: 60
+    name: fireman-service drive active
+    default: false
+
+  # --- Modes ---
+  - object_type: BinaryValue
+    instance: 61
+    name: maintenance active
+    default: false
+
+  - object_type: BinaryValue
+    instance: 62
+    name: service switch activated
+    default: false
+
+  - object_type: BinaryValue
+    instance: 63
+    name: inspection mode on
+    default: false
+
+  - object_type: BinaryValue
+    instance: 66
+    name: auxiliary mode on
+    default: false
+
+  - object_type: BinaryValue
+    instance: 69
+    name: installation mode
+    default: false
+
+  # --- Lift-off (remote shutdown) ---
+  - object_type: BinaryValue
+    instance: 70
+    name: lift-off
+    default: false
+
+  - object_type: BinaryValue
+    instance: 71
+    name: lift-off arrived in target floor
+    default: false
+
+  # --- Ventilation ---
+  - object_type: BinaryValue
+    instance: 72
+    name: car ventilator on
+    default: false
+
+  # --- Special modes ---
+  - object_type: BinaryValue
+    instance: 74
+    name: special mode car
+    default: false
+
+  - object_type: BinaryValue
+    instance: 75
+    name: special mode landing
+    default: false
+
+  # --- Evacuation status ---
+  - object_type: BinaryValue
+    instance: 76
+    name: evacuation
+    default: false
+
+  - object_type: BinaryValue
+    instance: 77
+    name: evacuation standby
+    default: false
+
+  - object_type: BinaryValue
+    instance: 78
+    name: evacuation drive active
+    default: false
+
+  - object_type: BinaryValue
+    instance: 79
+    name: evacuation complete
+    default: false
+
+  # --- Power ---
+  - object_type: BinaryValue
+    instance: 80
+    name: emergency power
+    default: false
+
+  - object_type: BinaryValue
+    instance: 81
+    name: emergency power low
+    default: false
+
+  # --- Group ---
+  - object_type: BinaryValue
+    instance: 86
+    name: group member
+    default: true
+
+  - object_type: BinaryValue
+    instance: 87
+    name: in group
+    default: true
+
+  # --- Normal operation ---
+  - object_type: BinaryValue
+    instance: 88
+    name: normal mode
+    default: true
+
+  - object_type: BinaryValue
+    instance: 89
+    name: normal power
+    default: true
+
+  # --- Free definable input ports ---
+  - object_type: BinaryValue
+    instance: 90
+    name: free definable input port-1
+    default: false
+
+  - object_type: BinaryValue
+    instance: 91
+    name: free definable input port-2
+    default: false
+
+  - object_type: BinaryValue
+    instance: 92
+    name: free definable input port-3
+    default: false
+
+  - object_type: BinaryValue
+    instance: 93
+    name: free definable input port-4
+    default: false
+
+  - object_type: BinaryValue
+    instance: 94
+    name: free definable input port-5
+    default: false
+
+  - object_type: BinaryValue
+    instance: 95
+    name: free definable input port-6
+    default: false
+
+  - object_type: BinaryValue
+    instance: 96
+    name: free definable input port-7
+    default: false
+
+  - object_type: BinaryValue
+    instance: 97
+    name: free definable input port-8
+    default: false
+
+  - object_type: BinaryValue
+    instance: 99
+    name: free definable input port-9
+    default: false
+
+  # --- Extended I/O ports (NewLift maxx firmware) ---
+  - object_type: BinaryValue
+    instance: 100
+    name: extended input port-1
+    default: false
+
+  - object_type: BinaryValue
+    instance: 101
+    name: extended input port-2
+    default: false
+
+  - object_type: BinaryValue
+    instance: 102
+    name: extended input port-3
+    default: false
+
+  - object_type: BinaryValue
+    instance: 103
+    name: extended input port-4
+    default: false
+
+  - object_type: BinaryValue
+    instance: 104
+    name: extended input port-5
+    default: false
+
+  - object_type: BinaryValue
+    instance: 105
+    name: extended input port-6
+    default: false
+
+  - object_type: BinaryValue
+    instance: 106
+    name: extended input port-7
+    default: false
+
+  - object_type: BinaryValue
+    instance: 107
+    name: extended input port-8
+    default: false
+
+  - object_type: BinaryValue
+    instance: 108
+    name: extended input port-9
+    default: false
+
+  # === MV — multi-state values ===
+
+  # --- Directions (3 states: down, up, none) ---
+  - object_type: MultiStateValue
+    instance: 6
+    name: system direction
+    default: 3
+    states: ["down", "up", "none"]
+
+  - object_type: MultiStateValue
+    instance: 7
+    name: departure direction
+    default: 3
+    states: ["down", "up", "none"]
+
+  - object_type: MultiStateValue
+    instance: 8
+    name: car drive direction
+    default: 3
+    states: ["down", "up", "none"]
+
+  # --- Door status ---
+  # Door A: 0 states in original config (firmware bug), use same as door B
+  - object_type: MultiStateValue
+    instance: 11
+    name: door A status
+    default: 5
+    states: ["stopped", "closing", "opening", "open", "closed", "error"]
+
+  - object_type: MultiStateValue
+    instance: 17
+    name: door B status
+    default: 5
+    states: ["stopped", "closing", "opening", "open", "closed", "error"]
+
+  # --- Operating mode (16 states) ---
+  - object_type: MultiStateValue
+    instance: 73
+    name: operating mode
+    default: 1
+    states:
+      - "normal"
+      - "system stopped"
+      - "emergency stop"
+      - "inspection"
+      - "auxiliary"
+      - "monitoring error"
+      - "fire-recall"
+      - "fireman-service"
+      - "overloaded"
+      - "full load"
+      - "lift-off"
+      - "car priority"
+      - "landing priority"
+      - "land. calls off"
+      - "calibration"
+      - "evacuation"
+
+  # === MO — writable multi-state output ===
+  - object_type: MultiStateOutput
+    instance: 300
+    name: Evacuation
+    default: 1
+    states: ["Off", "On", "Standby", "Continue"]
+
+  # === BO — writable binary output ===
+  - object_type: BinaryOutput
+    instance: 303
+    name: Lift Off
+    default: false
+
+# NewLift maxx scaling — set count > 0 to add per-floor AV objects after AV 85.
+# Real UGW firmware scales from 106 (single elevator) to 2500+ (multi-elevator building).
+# Override count via BACNET_OBJECT_PADDING env var without editing this file.
+object_padding:
+  template: lift_controller
+  count: 0

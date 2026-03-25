@@ -1,0 +1,83 @@
+# =============================================================================
+# BACnet Simulator — 6 virtual devices on host network
+# =============================================================================
+# Port and device_id are read from each profile's simulator: block.
+# Only metrics_port (orchestration concern) is set here per service.
+#
+# Usage:
+#   docker compose up --build          # start all 6
+#   docker compose up bacnet-legacy    # start only legacy
+#   docker compose logs -f             # follow all logs
+# =============================================================================
+
+x-common: &common
+  build: .
+  network_mode: host
+  environment: &common-env
+    BACNET_PROFILES_DIR: /app/profiles
+    BACNET_LOG_FORMAT: json
+    BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+
+services:
+
+  bacnet-legacy:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9100"
+    volumes:
+      - ./profiles-cybus/legacy_controller.yaml:/app/profiles/legacy_controller.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-modern:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9101"
+    volumes:
+      - ./profiles-cybus/modern_controller.yaml:/app/profiles/modern_controller.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-miele:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9102"
+    volumes:
+      - ./profiles-cybus/miele_energy_meter.yaml:/app/profiles/miele_energy_meter.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-energy:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9103"
+    volumes:
+      - ./profiles-cybus/green_energy_ebmgr.yaml:/app/profiles/green_energy_ebmgr.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-newlift:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9104"
+    volumes:
+      - ./profiles-cybus/newlift_gateway.yaml:/app/profiles/newlift_gateway.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-miele-overloaded:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9105"
+    volumes:
+      - ./profiles-cybus/miele_overloaded.yaml:/app/profiles/miele_overloaded.yaml:ro
+      # Parent profile mounted outside profiles dir so load_all doesn't glob it
+      - ./profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

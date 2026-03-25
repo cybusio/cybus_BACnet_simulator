@@ -23,6 +23,12 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Generated SCFs (IP-specific, not for VCS)
+scf/*.yml
+
+# Runtime scratch
+.run/
+
 # Secrets
 .env
 *.pem

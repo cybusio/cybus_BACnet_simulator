@@ -13,8 +13,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 RUN groupadd --gid 1001 app && useradd --uid 1001 --gid app --no-create-home app
 RUN chown -R app:app /app
 USER app
-EXPOSE 47808/udp
-EXPOSE 9100/tcp
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
     CMD python -c "import os,urllib.request; urllib.request.urlopen(f'http://localhost:{os.environ.get(\"BACNET_METRICS_PORT\", \"9100\")}/metrics', timeout=3)"
 ENTRYPOINT ["bacnet-sim"]

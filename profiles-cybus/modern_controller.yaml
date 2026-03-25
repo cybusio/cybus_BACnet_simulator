@@ -1,0 +1,191 @@
+# =============================================================================
+# Modern BACnet Controller — ASHRAE 135-2020 (protocol revision 24)
+# =============================================================================
+#
+# Simulates a current-generation IP controller with full spec compliance:
+#
+#   - protocol_revision 24: latest ASHRAE 135-2020 addenda
+#   - max_apdu 1476: full Ethernet-sized APDUs (no MS/TP constraints)
+#   - segmentedBoth: full bidirectional segmentation support
+#   - abort_reason 0: disabled — no abort quirks, fully compliant
+#   - Fast response: 5ms base + 3ms jitter (modern ARM Cortex-M7)
+#   - TSM pool 0: unlimited concurrent transactions
+#   - B-AAC conformance: full Advanced Application Controller
+#   - Full service set: RP, WP, RPM, WPM
+#
+# Behaviors this profile triggers:
+#   1. Clean RPM responses — segmented if needed, never aborts
+#   2. Writable setpoints — client can write to AV objects
+#   3. Mixed object types — AI, AO, AV, BI, BV for realistic polling
+#   4. Fast, reliable responses — baseline for performance testing
+#
+# This is the "happy path" device. Use it as a control group alongside
+# the error-producing profiles to verify client code handles both
+# well-behaved and misbehaving devices correctly.
+#
+# Tuning:
+#   - Set segmentation to noSegmentation to test segmentation failure path
+#   - Increase response_delay_ms to simulate slow network links
+#   - Set abort_reason to any code (1-255) to inject abort behavior
+#   - Set tsm_pool_size > 0 to enable TSM exhaustion under load
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47811
+  device_id: 400001
+
+device:
+  vendor: Trane
+  vendor_name: "Trane Technologies"
+  model_name: "Tracer-SC+"
+  firmware_revision: "6.20"
+  application_software_version: "6.20.1"
+  protocol_revision: 24          # ASHRAE 135-2020
+
+network:
+  max_apdu: 1476                 # Full Ethernet APDU — no size constraints
+  segmentation: segmentedBoth    # Full bidirectional segmentation
+
+realism:
+  response_delay_ms: 5           # Fast modern ARM CPU
+  response_jitter_ms: 3          # Minimal jitter on dedicated Ethernet
+  tsm_pool_size: 0               # Unlimited concurrent transactions
+  abort_reason: 0                # Disabled — fully compliant, no abort quirks
+
+objects:
+  # --- HVAC zone temperatures (read-only sensors) ---
+  - object_type: AnalogInput
+    instance: 1
+    name: zone_temp
+    units: degreesCelsius
+    default: 22.0
+
+  - object_type: AnalogInput
+    instance: 2
+    name: discharge_air_temp
+    units: degreesCelsius
+    default: 14.5
+
+  - object_type: AnalogInput
+    instance: 3
+    name: return_air_temp
+    units: degreesCelsius
+    default: 23.8
+
+  - object_type: AnalogInput
+    instance: 4
+    name: outside_air_temp
+    units: degreesCelsius
+    default: 28.3
+
+  - object_type: AnalogInput
+    instance: 5
+    name: zone_humidity
+    units: percentRelativeHumidity
+    default: 52.0
+
+  - object_type: AnalogInput
+    instance: 6
+    name: co2_level
+    units: partsPerMillion
+    default: 620
+
+  # --- Writable setpoints ---
+  - object_type: AnalogValue
+    instance: 1
+    name: cooling_setpoint
+    units: degreesCelsius
+    default: 24.0
+
+  - object_type: AnalogValue
+    instance: 2
+    name: heating_setpoint
+    units: degreesCelsius
+    default: 20.0
+
+  - object_type: AnalogValue
+    instance: 3
+    name: fan_speed_pct
+    units: percent
+    default: 75.0
+
+  - object_type: AnalogValue
+    instance: 4
+    name: damper_setpoint
+    units: percent
+    default: 50.0
+
+  - object_type: AnalogValue
+    instance: 5
+    name: schedule_override_hrs
+    units: hours
+    default: 0.0
+
+  # --- Actuator outputs ---
+  - object_type: AnalogOutput
+    instance: 1
+    name: cooling_valve
+    units: percent
+    default: 65.0              # AHU actively cooling (DAT 14.5°C confirms compressor on)
+
+  - object_type: AnalogOutput
+    instance: 2
+    name: heating_valve
+    units: percent
+    default: 0.0               # zone_temp 22°C > heating_setpoint 20°C — no heat needed
+
+  - object_type: AnalogOutput
+    instance: 3
+    name: damper_position
+    units: percent
+    default: 50.0
+
+  # --- Status/command binaries ---
+  - object_type: BinaryInput
+    instance: 1
+    name: fan_status
+    default: true
+
+  - object_type: BinaryInput
+    instance: 2
+    name: compressor_1_status
+    default: true
+
+  - object_type: BinaryInput
+    instance: 3
+    name: compressor_2_status
+    default: false
+
+  - object_type: BinaryInput
+    instance: 4
+    name: filter_alarm
+    default: false
+
+  - object_type: BinaryValue
+    instance: 1
+    name: occupancy_override
+    default: false
+
+  - object_type: BinaryValue
+    instance: 2
+    name: economizer_enable
+    default: true
+
+  # --- Operating mode ---
+  - object_type: MultiStateValue
+    instance: 1
+    name: operating_mode
+    default: 3
+    states:
+      - "off"
+      - "heat"
+      - "cool"
+      - "auto"
+      - "economy"
+
+# Scale object count for stress testing (adds AI objects after existing ones):
+# object_padding:
+#   template: hvac_controller    # VAV zones (temp, setpoint, damper, airflow, reheat)
+#   count: 200                   # number of additional objects to generate

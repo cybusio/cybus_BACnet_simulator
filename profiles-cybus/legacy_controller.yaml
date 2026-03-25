@@ -1,0 +1,140 @@
+# =============================================================================
+# Legacy BACnet Controller — ASHRAE 135-2001 (protocol revision 4)
+# =============================================================================
+#
+# Simulates a circa-2003 building controller with era-appropriate limitations:
+#
+#   - protocol_revision 4: pre-2004 spec, no RPM segmentation, limited objects
+#   - max_apdu 206: smallest MS/TP-era APDU size (forces single-property reads)
+#   - noSegmentation: cannot segment; RPM responses that exceed max_apdu abort
+#   - abort_reason 1: bufferOverflow — generic abort for oversized responses
+#   - Slow response: 50ms base + 30ms jitter (old 8-bit MCU)
+#   - TSM pool 4: only 4 concurrent transactions before silent drops
+#   - B-SS conformance: BACnet Server Simple — read-only, no scheduling
+#
+# Behaviors this profile triggers:
+#   1. ReadPropertyMultiple aborts (bufferOverflow) — object-list too large
+#   2. Slow response times — clients may hit APDU timeouts
+#   3. TSM exhaustion — rapid-fire requests get silently dropped
+#   4. No WriteProperty — all objects read-only
+#
+# Tuning:
+#   - Increase max_apdu to 480 to allow small RPM responses through
+#   - Set tsm_pool_size to 0 to disable TSM exhaustion (unlimited)
+#   - Reduce response_delay_ms/jitter for faster responses
+#   - Set abort_reason to 0 to disable abort behavior entirely
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47810
+  device_id: 300001
+
+device:
+  vendor: Siemens
+  vendor_name: "Siemens Building Technologies"
+  model_name: "PXC36-Legacy"
+  firmware_revision: "3.02"
+  application_software_version: "3.02.14"
+  protocol_revision: 4           # ASHRAE 135-2001
+
+network:
+  max_apdu: 206                  # Smallest MS/TP APDU — forces single-property reads
+  segmentation: noSegmentation   # No segmentation support at all
+
+realism:
+  response_delay_ms: 50          # Slow 8-bit MCU
+  response_jitter_ms: 30         # Variable bus contention
+  tsm_pool_size: 4               # Only 4 concurrent transactions
+  abort_reason: 1                # bufferOverflow on oversized responses
+
+objects:
+  # --- Zone temperature sensors ---
+  - object_type: AnalogInput
+    instance: 1
+    name: zone_temp_1
+    units: degreesCelsius
+    default: 22.3
+
+  - object_type: AnalogInput
+    instance: 2
+    name: zone_temp_2
+    units: degreesCelsius
+    default: 21.8
+
+  - object_type: AnalogInput
+    instance: 3
+    name: zone_temp_3
+    units: degreesCelsius
+    default: 23.1
+
+  - object_type: AnalogInput
+    instance: 4
+    name: outside_air_temp
+    units: degreesCelsius
+    default: 15.6
+
+  # --- Humidity sensors ---
+  - object_type: AnalogInput
+    instance: 5
+    name: zone_humidity_1
+    units: percentRelativeHumidity
+    default: 45.2
+
+  - object_type: AnalogInput
+    instance: 6
+    name: zone_humidity_2
+    units: percentRelativeHumidity
+    default: 48.7
+
+  # --- Damper/valve positions (read-only feedback) ---
+  - object_type: AnalogInput
+    instance: 10
+    name: damper_pos_1
+    units: percent
+    default: 65.0
+
+  - object_type: AnalogInput
+    instance: 11
+    name: damper_pos_2
+    units: percent
+    default: 40.0
+
+  - object_type: AnalogInput
+    instance: 12
+    name: valve_pos_hot
+    units: percent
+    default: 30.0
+
+  - object_type: AnalogInput
+    instance: 13
+    name: valve_pos_cold
+    units: percent
+    default: 0.0
+
+  # --- Status bits ---
+  - object_type: BinaryInput
+    instance: 1
+    name: fan_status
+    default: true
+
+  - object_type: BinaryInput
+    instance: 2
+    name: compressor_status
+    default: false
+
+  - object_type: BinaryInput
+    instance: 3
+    name: filter_alarm
+    default: false
+
+  - object_type: BinaryInput
+    instance: 4
+    name: freeze_protect
+    default: false
+
+# Scale object count for stress testing (adds AI objects after existing ones):
+# object_padding:
+#   template: hvac_controller    # VAV zones (temp, setpoint, damper, airflow, reheat)
+#   count: 200                   # number of additional objects to generate

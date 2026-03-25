@@ -1,0 +1,25 @@
+# =============================================================================
+# Miele Energy Meter — overloaded (CPU-saturated under burst load)
+# =============================================================================
+# Same objects as miele_energy_meter — only simulator identity and realism differ.
+#
+# Models a device under heavy concurrent load (36 CW connections):
+#   - TSM pool 12 fills fast → silent drops (~61% in PCAP)
+#   - 200ms+150ms response delay → CPU saturation
+#   - Oversized response aborts with reason 8 (applicationExceededReplyTime)
+# =============================================================================
+
+extends: miele_energy_meter.yaml
+
+simulator:
+  port: 47813
+  device_id: 1014007
+
+device:
+  model_name: "Miele-EnergyMeter-Overloaded"
+
+realism:
+  response_delay_ms: 200
+  response_jitter_ms: 150
+  tsm_pool_size: 12
+  abort_reason: 8
