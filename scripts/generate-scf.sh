@@ -16,16 +16,18 @@ PYTHON="${PYTHON:-${REPO_DIR}/.venv/bin/python3}"
 
 if [[ $# -lt 2 ]]; then
   cat <<'USAGE'
-Usage: ./scripts/generate-scf.sh <ip> <profile.yaml> [name] [endpoints] [poll-interval]
+Usage: ./scripts/generate-scf.sh <ip> <profile.yaml> [name] [endpoints] [poll-interval] [use-overrides]
 
   ip              Simulator IP as seen by the protocol-mapper container (e.g., 172.18.0.1)
   profile.yaml    Simulator profile (in profiles-cybus/)
   name            SCF service name (default: profile filename without extension)
   endpoints       Target endpoint count (0 = all profile objects, >0 = scale with padding)
   poll-interval   How often CW polls each endpoint in ms (default: 1000)
+  use-overrides   Whether to enable maxApdu/segmentation overrides (true/false, default: false)
 
 Examples:
   ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/newlift_gateway.yaml
+  ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/legacy_controller.yaml legacy-1 0 1000 true
   ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/newlift_gateway.yaml newlift-2000 2000
   ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/miele_energy_meter.yaml miele-5000 5000
   ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/modern_controller.yaml modern-1000 1000 2000
@@ -43,6 +45,7 @@ PROFILE="$2"
 NAME="${3:-$(basename "$PROFILE" .yaml)}"
 ENDPOINTS="${4:-0}"
 INTERVAL="${5:-1000}"
+USE_OVERRIDES="${6:-false}"
 
 [[ ! -f "$PROFILE" ]] && echo "ERROR: Profile not found: $PROFILE" >&2 && exit 1
 
@@ -50,7 +53,7 @@ mkdir -p "${REPO_DIR}/scf"
 OUTPUT="${REPO_DIR}/scf/${NAME}.yml"
 
 # Use the simulator's padding generator for scaling
-PYTHONPATH="${REPO_DIR}/src" "$PYTHON" - "$IP" "$PROFILE" "$NAME" "$ENDPOINTS" "$INTERVAL" << 'PYEOF' > "$OUTPUT"
+PYTHONPATH="${REPO_DIR}/src" "$PYTHON" - "$IP" "$PROFILE" "$NAME" "$ENDPOINTS" "$INTERVAL" "$USE_OVERRIDES" << 'PYEOF' > "$OUTPUT"
 import sys, os, yaml
 
 ip = sys.argv[1]
@@ -58,6 +61,7 @@ profile_path = os.path.abspath(sys.argv[2])
 name = sys.argv[3]
 target = int(sys.argv[4])
 interval = int(sys.argv[5])
+use_overrides_arg = sys.argv[6].lower() == 'true'
 
 def load(path):
     with open(path) as f:
@@ -148,8 +152,13 @@ if target > len(objects):
 overrides = {}
 if segmentation == 'noSegmentation':
     overrides['segmentation'] = 'no-segmentation'
+else:
+    overrides['segmentation'] = 'segmented-both'
+
 if max_apdu < 1476:
     overrides['maxApdu'] = max_apdu
+else:
+    overrides['maxApdu'] = 1476
 
 ABBREV = {
     'AnalogInput': 'AI', 'AnalogOutput': 'AO', 'AnalogValue': 'AV',
@@ -188,6 +197,13 @@ o.append(f'    default: {port}')
 o.append(f'  Device_Instance:')
 o.append(f'    type: number')
 o.append(f'    default: {dev_id}')
+if use_overrides_arg:
+    o.append(f'  maxApdu:')
+    o.append(f'    type: number')
+    o.append(f'    default: {overrides["maxApdu"]}')
+    o.append(f'  segmentation:')
+    o.append(f'    type: string')
+    o.append(f"    default: '{overrides['segmentation']}'")
 o.append(f'')
 o.append(f'resources:')
 o.append(f'')
@@ -199,9 +215,9 @@ o.append(f'      targetState: connected')
 o.append(f'      connection:')
 o.append(f"        deviceInstance: !ref Device_Instance")
 o.append(f"        deviceAddress: !sub '${{ipAddress}}:${{port}}'")
-for k, v in overrides.items():
-    val = "'{}'".format(v) if isinstance(v, str) else v
-    o.append('        {}: {}'.format(k, val))
+if use_overrides_arg:
+    o.append(f"        maxApdu: !ref maxApdu")
+    o.append(f"        segmentation: !ref segmentation")
 
 for obj in objects:
     obj_type = obj.get('object_type', obj.get('objectType', ''))

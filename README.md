@@ -13,11 +13,11 @@ docker compose up --build
 
 # Generate SCFs for all devices (use simulator IP as seen by protocol-mapper)
 for f in profiles-cybus/*.yaml; do
-  ./scripts/generate-scf.sh 172.18.0.1 "$f"
+  ./scripts/generate-scf.sh 172.30.0.100 "$f"
 done
 
 # Upload SCFs to Connectware UI, then verify
-./scripts/verify.sh 192.168.178.71 scf/newlift_gateway.yml
+./scripts/verify.sh 192.168.178.168 scf/newlift_gateway.yml
 ```
 
 ## Profiles

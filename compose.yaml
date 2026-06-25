@@ -1,5 +1,5 @@
 # =============================================================================
-# BACnet Simulator — 6 virtual devices on host network
+# BACnet Simulator — 6 virtual devices on dedicated network
 # =============================================================================
 # Port and device_id are read from each profile's simulator: block.
 # Only metrics_port (orchestration concern) is set here per service.
@@ -12,7 +12,7 @@
 
 x-common: &common
   build: .
-  network_mode: host
+  # Networks will be overridden per-service below to achieve dual-homing
   environment: &common-env
     BACNET_PROFILES_DIR: /app/profiles
     BACNET_LOG_FORMAT: json
@@ -22,6 +22,10 @@ services:
 
   bacnet-legacy:
     <<: *common
+    networks:
+      bacnet-net: {}
+      cybus:
+        ipv4_address: 172.30.0.100
     environment:
       <<: *common-env
       BACNET_METRICS_PORT: "9100"
@@ -32,6 +36,10 @@ services:
 
   bacnet-modern:
     <<: *common
+    networks:
+      bacnet-net: {}
+      cybus:
+        ipv4_address: 172.30.0.101
     environment:
       <<: *common-env
       BACNET_METRICS_PORT: "9101"
@@ -42,6 +50,10 @@ services:
 
   bacnet-miele:
     <<: *common
+    networks:
+      bacnet-net: {}
+      cybus:
+        ipv4_address: 172.30.0.102
     environment:
       <<: *common-env
       BACNET_METRICS_PORT: "9102"
@@ -52,6 +64,10 @@ services:
 
   bacnet-energy:
     <<: *common
+    networks:
+      bacnet-net: {}
+      cybus:
+        ipv4_address: 172.30.0.103
     environment:
       <<: *common-env
       BACNET_METRICS_PORT: "9103"
@@ -62,6 +78,10 @@ services:
 
   bacnet-newlift:
     <<: *common
+    networks:
+      bacnet-net: {}
+      cybus:
+        ipv4_address: 172.30.0.104
     environment:
       <<: *common-env
       BACNET_METRICS_PORT: "9104"
@@ -72,6 +92,10 @@ services:
 
   bacnet-miele-overloaded:
     <<: *common
+    networks:
+      bacnet-net: {}
+      cybus:
+        ipv4_address: 172.30.0.105
     environment:
       <<: *common-env
       BACNET_METRICS_PORT: "9105"
@@ -80,3 +104,11 @@ services:
       - ./profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
       - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
       - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+networks:
+  bacnet-net:
+    name: bacnet-net
+    driver: bridge
+  cybus:
+    external: true
+    name: cybus

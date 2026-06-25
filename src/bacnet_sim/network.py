@@ -345,7 +345,7 @@ class DeviceApp:
         bind_address: str = "0.0.0.0",  # noqa: S104
     ) -> None:
         dev_obj = _make_device_object(device.device_id, device.profile)
-        addr = IPv4Address(f"{bind_address}/32:{port}")
+        addr = IPv4Address(f"{bind_address}:{port}")
         realism = device.profile.realism
         self.app = SlowApplication(dev_obj, addr, realism)
         # Register per-instance SSM abort reason override
