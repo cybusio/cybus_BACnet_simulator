@@ -1,0 +1,44 @@
+# =============================================================================
+# Weather station MISSING rainCurrent — reproduces _bacnet_miele_missing_rainCurrent
+# =============================================================================
+# Same as weatherstation.yaml but the rainCurrent object (instance 3) is ABSENT.
+# The cert SCF still tries to read rainCurrent's object-name/present-value/units
+# -> the device replies unknown-object. Verifies the adapter surfaces the error
+# gracefully (no crash / unhandled rejection) while the other 16 points keep
+# flowing. Real factory-floor mismatch: SCF expects a point the device lacks.
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47867
+  device_id: 2000301
+
+device:
+  vendor: MIELE
+  vendor_name: "Miele"
+  model_name: "WeatherStation"
+  protocol_revision: 22
+
+network:
+  max_apdu: 1476
+  segmentation: noSegmentation
+
+objects:
+  - { object_type: AnalogInput, instance: 0,  name: outdoorTemperature, units: degreesCelsius, default: 18.5 }
+  - { object_type: AnalogInput, instance: 1,  name: windSpeed,          units: noUnits,        default: 4.2 }
+  - { object_type: AnalogInput, instance: 2,  name: relativeHumidity,   units: noUnits,        default: 65.0 }
+  # instance 3 (rainCurrent) intentionally ABSENT
+  - { object_type: AnalogInput, instance: 4,  name: rainLast24h,        units: noUnits,        default: 12.3 }
+  - { object_type: AnalogInput, instance: 5,  name: brightnessEast,     units: noUnits,        default: 8500.0 }
+  - { object_type: AnalogInput, instance: 6,  name: brightnessNorth,    units: noUnits,        default: 3200.0 }
+  - { object_type: AnalogInput, instance: 7,  name: brightnessSouth,    units: noUnits,        default: 12000.0 }
+  - { object_type: AnalogInput, instance: 8,  name: brightnessWest,     units: noUnits,        default: 9100.0 }
+  - { object_type: AnalogInput, instance: 9,  name: forecastDay1Max,    units: degreesCelsius, default: 22.0 }
+  - { object_type: AnalogInput, instance: 10, name: forecastDay1Min,    units: degreesCelsius, default: 11.0 }
+  - { object_type: AnalogInput, instance: 11, name: forecastDay2Max,    units: degreesCelsius, default: 24.0 }
+  - { object_type: AnalogInput, instance: 12, name: forecastDay2Min,    units: degreesCelsius, default: 12.0 }
+  - { object_type: AnalogInput, instance: 13, name: forecastDay3Max,    units: degreesCelsius, default: 21.0 }
+  - { object_type: AnalogInput, instance: 14, name: forecastDay3Min,    units: degreesCelsius, default: 10.0 }
+  - { object_type: AnalogInput, instance: 15, name: sunAzimuthAngle,    units: noUnits,        default: 180.0 }
+  - { object_type: AnalogInput, instance: 16, name: sunElevationAngle,  units: noUnits,        default: 45.0 }

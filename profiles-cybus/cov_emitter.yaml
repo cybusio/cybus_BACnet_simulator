@@ -1,0 +1,100 @@
+# =============================================================================
+# COV Emitter — server-side Subscribe-COV with periodic value drivers
+# =============================================================================
+#
+# Simulates a modern controller that supports Subscribe-COV and emits
+# UnconfirmedCOVNotification / ConfirmedCOVNotification when monitored
+# present-values cross their cov_increment. Used to verify the adapter's
+# COV cascade end-to-end.
+#
+# Behaviors:
+#   1. SimpleACK on Subscribe-COV within ~ms
+#   2. Notifications dispatched when driver-updated presentValue crosses
+#      the configured cov_increment from the last reported value
+#   3. Lifetime expiry cancels the subscription server-side
+#   4. lifetime=0 sent as cancel cancels an existing subscription
+#
+# Each driven object also opts into bacpypes3.local.* variants automatically
+# (network._object_uses_cov), giving it the _cov_criteria detection algorithm
+# required by ChangeOfValueServices.
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47820
+  device_id: 900001
+
+device:
+  vendor: Tridium
+  vendor_name: "Tridium Inc."
+  model_name: "Niagara-COV-Emitter"
+  firmware_revision: "4.13"
+  application_software_version: "4.13.0"
+  protocol_revision: 22
+
+network:
+  max_apdu: 1476
+  segmentation: segmentedBoth
+
+realism:
+  response_delay_ms: 5
+  response_jitter_ms: 2
+  tsm_pool_size: 0
+  abort_reason: 0
+
+objects:
+  # Three sinusoidal analog values — fast cov_increment to fire often
+  - object_type: AnalogValue
+    instance: 1
+    name: temp_sin_1
+    units: degreesCelsius
+    default: 22.0
+    cov_increment: 0.1
+    drive:
+      shape: sine
+      period_ms: 500
+      low: 18.0
+      high: 26.0
+
+  - object_type: AnalogValue
+    instance: 2
+    name: pressure_saw
+    units: pascals
+    default: 1000.0
+    cov_increment: 5.0
+    drive:
+      shape: sawtooth
+      period_ms: 500
+      low: 950.0
+      high: 1050.0
+      step: 10.0
+
+  - object_type: AnalogValue
+    instance: 3
+    name: flow_sin
+    units: cubicMetersPerHour
+    default: 12.0
+    cov_increment: 0.2
+    drive:
+      shape: sine
+      period_ms: 500
+      low: 10.0
+      high: 14.0
+
+  # Two binary values — toggle every cycle, GenericCriteria fires on any change
+  - object_type: BinaryValue
+    instance: 1
+    name: alarm_toggle
+    default: false
+    drive:
+      shape: toggle
+      period_ms: 700
+
+  - object_type: BinaryValue
+    instance: 2
+    name: motor_status
+    default: true
+    drive:
+      shape: toggle
+      period_ms: 900

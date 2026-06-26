@@ -1,0 +1,28 @@
+# =============================================================================
+# Weather station OVERLOADED — toxic over-polling resilience fixture
+# =============================================================================
+# Same WeatherStation as weatherstation_norain (rainCurrent / instance 3 ABSENT,
+# 16 AnalogInputs 0-2,4-16) but under heavy concurrent load. Models the regression
+# _bacnet_miele_missing_rainCurrent driven at ~51 reads/s by ONE receive SCF
+# (17 points x 3 properties every 1000ms) on a single embedded device:
+#   - TSM pool 12 fills fast -> silent drops once concurrency exceeds it
+#   - 200ms+150ms response delay -> CPU saturation, replies queue up
+#   - oversized/late responses ABORT with reason 8 (application-exceeded-reply-time)
+# The proven miele_overloaded recipe, applied to the cert WeatherStation device.
+#
+# The adapter's job: SURVIVE, do not amplify. Drops/aborts are handled as "busy"
+# (connection stays connected, no reconnect storm, no adapter-side TSM exhaustion);
+# rainCurrent degrades gracefully (unknown-object) while the other 16 points flow.
+# =============================================================================
+
+extends: weatherstation_norain.yaml
+
+simulator:
+  port: 47868
+  device_id: 2000302
+
+realism:
+  response_delay_ms: 200
+  response_jitter_ms: 150
+  tsm_pool_size: 12
+  abort_reason: 8

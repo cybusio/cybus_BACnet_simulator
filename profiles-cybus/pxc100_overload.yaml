@@ -1,0 +1,673 @@
+# PXC100-E.D Miele profile: 130 distinct AV objects, abort+drop ~1:1 under overload.
+extends: _base.yaml
+simulator:
+  port: 47840
+  device_id: 1014006
+device:
+  vendor: MIELE
+  vendor_name: "Siemens"
+  model_name: "Siemens-PXC100-E.D"
+  firmware_revision: "1.11.0"
+  application_software_version: "1.11.0"
+  protocol_revision: 14
+network:
+  max_apdu: 480
+  segmentation: noSegmentation
+realism:
+  response_delay_ms: 50
+  response_jitter_ms: 30
+  tsm_pool_size: 6
+  abort_reason: 1
+  overload_abort: true
+  overload_drop_prob: 0.5
+objects:
+  - object_type: AnalogValue
+    instance: 101000
+    name: AV101000
+    units: watts
+    default: 1000.5
+  - object_type: AnalogValue
+    instance: 101001
+    name: AV101001
+    units: watts
+    default: 1001.5
+  - object_type: AnalogValue
+    instance: 101002
+    name: AV101002
+    units: watts
+    default: 1002.5
+  - object_type: AnalogValue
+    instance: 101003
+    name: AV101003
+    units: watts
+    default: 1003.5
+  - object_type: AnalogValue
+    instance: 101004
+    name: AV101004
+    units: watts
+    default: 1004.5
+  - object_type: AnalogValue
+    instance: 101005
+    name: AV101005
+    units: watts
+    default: 1005.5
+  - object_type: AnalogValue
+    instance: 101006
+    name: AV101006
+    units: watts
+    default: 1006.5
+  - object_type: AnalogValue
+    instance: 101007
+    name: AV101007
+    units: watts
+    default: 1007.5
+  - object_type: AnalogValue
+    instance: 101008
+    name: AV101008
+    units: watts
+    default: 1008.5
+  - object_type: AnalogValue
+    instance: 101009
+    name: AV101009
+    units: watts
+    default: 1009.5
+  - object_type: AnalogValue
+    instance: 101010
+    name: AV101010
+    units: watts
+    default: 1010.5
+  - object_type: AnalogValue
+    instance: 101011
+    name: AV101011
+    units: watts
+    default: 1011.5
+  - object_type: AnalogValue
+    instance: 101012
+    name: AV101012
+    units: watts
+    default: 1012.5
+  - object_type: AnalogValue
+    instance: 101013
+    name: AV101013
+    units: watts
+    default: 1013.5
+  - object_type: AnalogValue
+    instance: 101014
+    name: AV101014
+    units: watts
+    default: 1014.5
+  - object_type: AnalogValue
+    instance: 101015
+    name: AV101015
+    units: watts
+    default: 1015.5
+  - object_type: AnalogValue
+    instance: 101016
+    name: AV101016
+    units: watts
+    default: 1016.5
+  - object_type: AnalogValue
+    instance: 101017
+    name: AV101017
+    units: watts
+    default: 1017.5
+  - object_type: AnalogValue
+    instance: 101018
+    name: AV101018
+    units: watts
+    default: 1018.5
+  - object_type: AnalogValue
+    instance: 101019
+    name: AV101019
+    units: watts
+    default: 1019.5
+  - object_type: AnalogValue
+    instance: 101020
+    name: AV101020
+    units: watts
+    default: 1020.5
+  - object_type: AnalogValue
+    instance: 101021
+    name: AV101021
+    units: watts
+    default: 1021.5
+  - object_type: AnalogValue
+    instance: 101022
+    name: AV101022
+    units: watts
+    default: 1022.5
+  - object_type: AnalogValue
+    instance: 101023
+    name: AV101023
+    units: watts
+    default: 1023.5
+  - object_type: AnalogValue
+    instance: 101024
+    name: AV101024
+    units: watts
+    default: 1024.5
+  - object_type: AnalogValue
+    instance: 101025
+    name: AV101025
+    units: watts
+    default: 1025.5
+  - object_type: AnalogValue
+    instance: 101026
+    name: AV101026
+    units: watts
+    default: 1026.5
+  - object_type: AnalogValue
+    instance: 101027
+    name: AV101027
+    units: watts
+    default: 1027.5
+  - object_type: AnalogValue
+    instance: 101028
+    name: AV101028
+    units: watts
+    default: 1028.5
+  - object_type: AnalogValue
+    instance: 101029
+    name: AV101029
+    units: watts
+    default: 1029.5
+  - object_type: AnalogValue
+    instance: 101030
+    name: AV101030
+    units: watts
+    default: 1030.5
+  - object_type: AnalogValue
+    instance: 101031
+    name: AV101031
+    units: watts
+    default: 1031.5
+  - object_type: AnalogValue
+    instance: 101032
+    name: AV101032
+    units: watts
+    default: 1032.5
+  - object_type: AnalogValue
+    instance: 101033
+    name: AV101033
+    units: watts
+    default: 1033.5
+  - object_type: AnalogValue
+    instance: 101034
+    name: AV101034
+    units: watts
+    default: 1034.5
+  - object_type: AnalogValue
+    instance: 101035
+    name: AV101035
+    units: watts
+    default: 1035.5
+  - object_type: AnalogValue
+    instance: 101036
+    name: AV101036
+    units: watts
+    default: 1036.5
+  - object_type: AnalogValue
+    instance: 101037
+    name: AV101037
+    units: watts
+    default: 1037.5
+  - object_type: AnalogValue
+    instance: 101038
+    name: AV101038
+    units: watts
+    default: 1038.5
+  - object_type: AnalogValue
+    instance: 101039
+    name: AV101039
+    units: watts
+    default: 1039.5
+  - object_type: AnalogValue
+    instance: 101040
+    name: AV101040
+    units: watts
+    default: 1040.5
+  - object_type: AnalogValue
+    instance: 101041
+    name: AV101041
+    units: watts
+    default: 1041.5
+  - object_type: AnalogValue
+    instance: 101042
+    name: AV101042
+    units: watts
+    default: 1042.5
+  - object_type: AnalogValue
+    instance: 101043
+    name: AV101043
+    units: watts
+    default: 1043.5
+  - object_type: AnalogValue
+    instance: 101044
+    name: AV101044
+    units: watts
+    default: 1044.5
+  - object_type: AnalogValue
+    instance: 101045
+    name: AV101045
+    units: watts
+    default: 1045.5
+  - object_type: AnalogValue
+    instance: 101046
+    name: AV101046
+    units: watts
+    default: 1046.5
+  - object_type: AnalogValue
+    instance: 101047
+    name: AV101047
+    units: watts
+    default: 1047.5
+  - object_type: AnalogValue
+    instance: 101048
+    name: AV101048
+    units: watts
+    default: 1048.5
+  - object_type: AnalogValue
+    instance: 101049
+    name: AV101049
+    units: watts
+    default: 1049.5
+  - object_type: AnalogValue
+    instance: 101050
+    name: AV101050
+    units: watts
+    default: 1050.5
+  - object_type: AnalogValue
+    instance: 101051
+    name: AV101051
+    units: watts
+    default: 1051.5
+  - object_type: AnalogValue
+    instance: 101052
+    name: AV101052
+    units: watts
+    default: 1052.5
+  - object_type: AnalogValue
+    instance: 101053
+    name: AV101053
+    units: watts
+    default: 1053.5
+  - object_type: AnalogValue
+    instance: 101054
+    name: AV101054
+    units: watts
+    default: 1054.5
+  - object_type: AnalogValue
+    instance: 101055
+    name: AV101055
+    units: watts
+    default: 1055.5
+  - object_type: AnalogValue
+    instance: 101056
+    name: AV101056
+    units: watts
+    default: 1056.5
+  - object_type: AnalogValue
+    instance: 101057
+    name: AV101057
+    units: watts
+    default: 1057.5
+  - object_type: AnalogValue
+    instance: 101058
+    name: AV101058
+    units: watts
+    default: 1058.5
+  - object_type: AnalogValue
+    instance: 101059
+    name: AV101059
+    units: watts
+    default: 1059.5
+  - object_type: AnalogValue
+    instance: 101060
+    name: AV101060
+    units: watts
+    default: 1060.5
+  - object_type: AnalogValue
+    instance: 101061
+    name: AV101061
+    units: watts
+    default: 1061.5
+  - object_type: AnalogValue
+    instance: 101062
+    name: AV101062
+    units: watts
+    default: 1062.5
+  - object_type: AnalogValue
+    instance: 101063
+    name: AV101063
+    units: watts
+    default: 1063.5
+  - object_type: AnalogValue
+    instance: 101064
+    name: AV101064
+    units: watts
+    default: 1064.5
+  - object_type: AnalogValue
+    instance: 101065
+    name: AV101065
+    units: watts
+    default: 1065.5
+  - object_type: AnalogValue
+    instance: 101066
+    name: AV101066
+    units: watts
+    default: 1066.5
+  - object_type: AnalogValue
+    instance: 101067
+    name: AV101067
+    units: watts
+    default: 1067.5
+  - object_type: AnalogValue
+    instance: 101068
+    name: AV101068
+    units: watts
+    default: 1068.5
+  - object_type: AnalogValue
+    instance: 101069
+    name: AV101069
+    units: watts
+    default: 1069.5
+  - object_type: AnalogValue
+    instance: 101070
+    name: AV101070
+    units: watts
+    default: 1070.5
+  - object_type: AnalogValue
+    instance: 101071
+    name: AV101071
+    units: watts
+    default: 1071.5
+  - object_type: AnalogValue
+    instance: 101072
+    name: AV101072
+    units: watts
+    default: 1072.5
+  - object_type: AnalogValue
+    instance: 101073
+    name: AV101073
+    units: watts
+    default: 1073.5
+  - object_type: AnalogValue
+    instance: 101074
+    name: AV101074
+    units: watts
+    default: 1074.5
+  - object_type: AnalogValue
+    instance: 101075
+    name: AV101075
+    units: watts
+    default: 1075.5
+  - object_type: AnalogValue
+    instance: 101076
+    name: AV101076
+    units: watts
+    default: 1076.5
+  - object_type: AnalogValue
+    instance: 101077
+    name: AV101077
+    units: watts
+    default: 1077.5
+  - object_type: AnalogValue
+    instance: 101078
+    name: AV101078
+    units: watts
+    default: 1078.5
+  - object_type: AnalogValue
+    instance: 101079
+    name: AV101079
+    units: watts
+    default: 1079.5
+  - object_type: AnalogValue
+    instance: 101080
+    name: AV101080
+    units: watts
+    default: 1080.5
+  - object_type: AnalogValue
+    instance: 101081
+    name: AV101081
+    units: watts
+    default: 1081.5
+  - object_type: AnalogValue
+    instance: 101082
+    name: AV101082
+    units: watts
+    default: 1082.5
+  - object_type: AnalogValue
+    instance: 101083
+    name: AV101083
+    units: watts
+    default: 1083.5
+  - object_type: AnalogValue
+    instance: 101084
+    name: AV101084
+    units: watts
+    default: 1084.5
+  - object_type: AnalogValue
+    instance: 101085
+    name: AV101085
+    units: watts
+    default: 1085.5
+  - object_type: AnalogValue
+    instance: 101086
+    name: AV101086
+    units: watts
+    default: 1086.5
+  - object_type: AnalogValue
+    instance: 101087
+    name: AV101087
+    units: watts
+    default: 1087.5
+  - object_type: AnalogValue
+    instance: 101088
+    name: AV101088
+    units: watts
+    default: 1088.5
+  - object_type: AnalogValue
+    instance: 101089
+    name: AV101089
+    units: watts
+    default: 1089.5
+  - object_type: AnalogValue
+    instance: 101090
+    name: AV101090
+    units: watts
+    default: 1090.5
+  - object_type: AnalogValue
+    instance: 101091
+    name: AV101091
+    units: watts
+    default: 1091.5
+  - object_type: AnalogValue
+    instance: 101092
+    name: AV101092
+    units: watts
+    default: 1092.5
+  - object_type: AnalogValue
+    instance: 101093
+    name: AV101093
+    units: watts
+    default: 1093.5
+  - object_type: AnalogValue
+    instance: 101094
+    name: AV101094
+    units: watts
+    default: 1094.5
+  - object_type: AnalogValue
+    instance: 101095
+    name: AV101095
+    units: watts
+    default: 1095.5
+  - object_type: AnalogValue
+    instance: 101096
+    name: AV101096
+    units: watts
+    default: 1096.5
+  - object_type: AnalogValue
+    instance: 101097
+    name: AV101097
+    units: watts
+    default: 1097.5
+  - object_type: AnalogValue
+    instance: 101098
+    name: AV101098
+    units: watts
+    default: 1098.5
+  - object_type: AnalogValue
+    instance: 101099
+    name: AV101099
+    units: watts
+    default: 1099.5
+  - object_type: AnalogValue
+    instance: 101100
+    name: AV101100
+    units: watts
+    default: 1100.5
+  - object_type: AnalogValue
+    instance: 101101
+    name: AV101101
+    units: watts
+    default: 1101.5
+  - object_type: AnalogValue
+    instance: 101102
+    name: AV101102
+    units: watts
+    default: 1102.5
+  - object_type: AnalogValue
+    instance: 101103
+    name: AV101103
+    units: watts
+    default: 1103.5
+  - object_type: AnalogValue
+    instance: 101104
+    name: AV101104
+    units: watts
+    default: 1104.5
+  - object_type: AnalogValue
+    instance: 101105
+    name: AV101105
+    units: watts
+    default: 1105.5
+  - object_type: AnalogValue
+    instance: 101106
+    name: AV101106
+    units: watts
+    default: 1106.5
+  - object_type: AnalogValue
+    instance: 101107
+    name: AV101107
+    units: watts
+    default: 1107.5
+  - object_type: AnalogValue
+    instance: 101108
+    name: AV101108
+    units: watts
+    default: 1108.5
+  - object_type: AnalogValue
+    instance: 101109
+    name: AV101109
+    units: watts
+    default: 1109.5
+  - object_type: AnalogValue
+    instance: 101110
+    name: AV101110
+    units: watts
+    default: 1110.5
+  - object_type: AnalogValue
+    instance: 101111
+    name: AV101111
+    units: watts
+    default: 1111.5
+  - object_type: AnalogValue
+    instance: 101112
+    name: AV101112
+    units: watts
+    default: 1112.5
+  - object_type: AnalogValue
+    instance: 101113
+    name: AV101113
+    units: watts
+    default: 1113.5
+  - object_type: AnalogValue
+    instance: 101114
+    name: AV101114
+    units: watts
+    default: 1114.5
+  - object_type: AnalogValue
+    instance: 101115
+    name: AV101115
+    units: watts
+    default: 1115.5
+  - object_type: AnalogValue
+    instance: 101116
+    name: AV101116
+    units: watts
+    default: 1116.5
+  - object_type: AnalogValue
+    instance: 101117
+    name: AV101117
+    units: watts
+    default: 1117.5
+  - object_type: AnalogValue
+    instance: 101118
+    name: AV101118
+    units: watts
+    default: 1118.5
+  - object_type: AnalogValue
+    instance: 101119
+    name: AV101119
+    units: watts
+    default: 1119.5
+  - object_type: AnalogValue
+    instance: 101120
+    name: AV101120
+    units: watts
+    default: 1120.5
+  - object_type: AnalogValue
+    instance: 101121
+    name: AV101121
+    units: watts
+    default: 1121.5
+  - object_type: AnalogValue
+    instance: 101122
+    name: AV101122
+    units: watts
+    default: 1122.5
+  - object_type: AnalogValue
+    instance: 101123
+    name: AV101123
+    units: watts
+    default: 1123.5
+  - object_type: AnalogValue
+    instance: 101124
+    name: AV101124
+    units: watts
+    default: 1124.5
+  - object_type: AnalogValue
+    instance: 101125
+    name: AV101125
+    units: watts
+    default: 1125.5
+  - object_type: AnalogValue
+    instance: 101126
+    name: AV101126
+    units: watts
+    default: 1126.5
+  - object_type: AnalogValue
+    instance: 101127
+    name: AV101127
+    units: watts
+    default: 1127.5
+  - object_type: AnalogValue
+    instance: 101128
+    name: AV101128
+    units: watts
+    default: 1128.5
+  - object_type: AnalogValue
+    instance: 101129
+    name: AV101129
+    units: watts
+    default: 1129.5

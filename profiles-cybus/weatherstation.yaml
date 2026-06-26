@@ -1,0 +1,42 @@
+# =============================================================================
+# Weather station — 17 analog-input points (mirrors the cert WeatherStation SCF)
+# =============================================================================
+# Matches receive_bacnet_WeatherStation.yaml: 17 weather points, each read for
+# object-name / present-value / units (51 endpoints), polled. Scalar reads only
+# (real-world Miele pattern). Happy-path device — all 17 points present.
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47866
+  device_id: 2000300
+
+device:
+  vendor: MIELE
+  vendor_name: "Miele"
+  model_name: "WeatherStation"
+  protocol_revision: 22
+
+network:
+  max_apdu: 1476
+  segmentation: noSegmentation
+
+objects:
+  - { object_type: AnalogInput, instance: 0,  name: outdoorTemperature, units: degreesCelsius, default: 18.5 }
+  - { object_type: AnalogInput, instance: 1,  name: windSpeed,          units: noUnits,        default: 4.2 }
+  - { object_type: AnalogInput, instance: 2,  name: relativeHumidity,   units: noUnits,        default: 65.0 }
+  - { object_type: AnalogInput, instance: 3,  name: rainCurrent,        units: noUnits,        default: 0.0 }
+  - { object_type: AnalogInput, instance: 4,  name: rainLast24h,        units: noUnits,        default: 12.3 }
+  - { object_type: AnalogInput, instance: 5,  name: brightnessEast,     units: noUnits,        default: 8500.0 }
+  - { object_type: AnalogInput, instance: 6,  name: brightnessNorth,    units: noUnits,        default: 3200.0 }
+  - { object_type: AnalogInput, instance: 7,  name: brightnessSouth,    units: noUnits,        default: 12000.0 }
+  - { object_type: AnalogInput, instance: 8,  name: brightnessWest,     units: noUnits,        default: 9100.0 }
+  - { object_type: AnalogInput, instance: 9,  name: forecastDay1Max,    units: degreesCelsius, default: 22.0 }
+  - { object_type: AnalogInput, instance: 10, name: forecastDay1Min,    units: degreesCelsius, default: 11.0 }
+  - { object_type: AnalogInput, instance: 11, name: forecastDay2Max,    units: degreesCelsius, default: 24.0 }
+  - { object_type: AnalogInput, instance: 12, name: forecastDay2Min,    units: degreesCelsius, default: 12.0 }
+  - { object_type: AnalogInput, instance: 13, name: forecastDay3Max,    units: degreesCelsius, default: 21.0 }
+  - { object_type: AnalogInput, instance: 14, name: forecastDay3Min,    units: degreesCelsius, default: 10.0 }
+  - { object_type: AnalogInput, instance: 15, name: sunAzimuthAngle,    units: noUnits,        default: 180.0 }
+  - { object_type: AnalogInput, instance: 16, name: sunElevationAngle,  units: noUnits,        default: 45.0 }
