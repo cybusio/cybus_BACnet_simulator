@@ -1,0 +1,25 @@
+# =============================================================================
+# Huge controller — ~1000 BACnet objects (the largest realistic device)
+# =============================================================================
+# object-list is then ~1000 ObjectIdentifiers (~5 KB) — far beyond any APDU
+# (max 1476), so a full read ABORTs and must be recovered in pieces: ReadRange
+# chunks (DS-RR-A) on this device, or per-element indexed reads on a device
+# without it. Stress test for the adapter's large-array handling at scale.
+# =============================================================================
+
+extends: miele_energy_meter.yaml
+
+simulator:
+  port: 47860
+  device_id: 2000100
+
+device:
+  model_name: "huge-controller-1000"
+
+network:
+  max_apdu: 1476            # largest non-segmented APDU
+  segmentation: noSegmentation
+
+object_padding:
+  template: energy_meter
+  count: 900                # + ~100 inherited = ~1000 objects

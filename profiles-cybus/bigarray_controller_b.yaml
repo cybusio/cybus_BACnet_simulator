@@ -1,0 +1,27 @@
+# =============================================================================
+# Big-array controller — small object-list + one ~20001-state Multi-state Value
+# =============================================================================
+# Distinct from the mega (large object-list) profile: here the object-list is
+# small (~100), but the Multi-state Value's state-text is a ~20001-element
+# CharacterString array — a "large array" property that is NOT object-list.
+# Forces ReadRange/indexed recovery of a non-object-list BACnetARRAY (string
+# elements), exercising a different element decoder than the ObjectID array.
+# =============================================================================
+
+extends: miele_energy_meter.yaml
+
+simulator:
+  port: 47865
+  device_id: 2000211
+
+device:
+  model_name: "bigarray-controller-20001-b"
+
+network:
+  max_apdu: 1476
+  segmentation: noSegmentation
+
+state_padding:
+  instance: 1
+  name: "mega-states"
+  count: 20001             # ~20001-element state-text array on multi-state-value:1

@@ -1,0 +1,25 @@
+# =============================================================================
+# Mega controller — ~20001 BACnet objects (large-object stress, beyond huge)
+# =============================================================================
+# object-list is then ~20001 ObjectIdentifiers (~100 KB) — ~14x one APDU and far
+# past the old 10000-element recovery cap. Forces ReadRange By Position to walk
+# ~200 chunks (DS-RR-A) or, on a device without it, ~20001 indexed reads. Stress
+# test for the adapter's large-array recovery + data integrity at extreme scale.
+# =============================================================================
+
+extends: miele_energy_meter.yaml
+
+simulator:
+  port: 47862
+  device_id: 2000201
+
+device:
+  model_name: "mega-controller-20001-b"
+
+network:
+  max_apdu: 1476            # largest non-segmented APDU
+  segmentation: noSegmentation
+
+object_padding:
+  template: energy_meter
+  count: 20001             # ~20001 generated objects (large object-list)
