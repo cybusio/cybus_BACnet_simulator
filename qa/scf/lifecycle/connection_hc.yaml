@@ -1,0 +1,35 @@
+#------------------------------------------------------------------------------
+# BACnet connection for the lifecycle / reconnect factory e2e. BACnet is
+# connectionless UDP, so a silently-dropped peer is only detectable by the
+# adapter's periodic liveness probe (hard-coded interval/threshold); the
+# connectLost → FSM-reconnect transition becomes observable once the peer
+# stays down past that threshold.
+#------------------------------------------------------------------------------
+description: BACnet connection for lifecycle/reconnect e2e
+metadata:
+  name: !sub 'Connection BACnet ${machine_common_name}'
+  version: 1.0.0
+parameters:
+  bacnet_host:
+    type: string
+  bacnet_port:
+    type: number
+    default: 47808
+  device_instance:
+    type: number
+  machine_common_name:
+    type: string
+    default: lifecycle
+resources:
+  bacnet_connection:
+    type: Cybus::Connection
+    properties:
+      protocol: Bacnet
+      targetState: connected
+      connection:
+        deviceInstance: !ref device_instance
+        deviceAddress: !sub '${bacnet_host}:${bacnet_port}'
+        connectionStrategy:
+          initialDelay: 1000
+          maxDelay: 8000
+          incrementFactor: 2

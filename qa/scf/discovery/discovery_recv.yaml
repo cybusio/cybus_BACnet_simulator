@@ -1,0 +1,56 @@
+#------------------------------------------------------------------------------
+# Capability-discovery + large-array probe. Reads two scalar device-capability
+# properties (max-apdu-length-accepted, segmentation-supported) and the device
+# object-list. Deployed against modern (1476 / segmented-both, small list),
+# legacy (206 / no-segmentation) and mega-b (20001-object list — exercises the
+# chunked large-array recovery all the way to MQTT, ~100 KB payload).
+#------------------------------------------------------------------------------
+description: Capability discovery + large-array probe receive
+metadata:
+  name: !sub 'Discovery probe ${machine_common_name}'
+  version: 1.0.0
+parameters:
+  bacnet_connection_service_id:
+    type: string
+  machine_common_name:
+    type: string
+    default: disc
+  device_instance:
+    type: integer
+  interval:
+    type: integer
+    default: 3000
+resources:
+  maxapdu:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'disc/maxapdu'
+      subscribe:
+        objectType: device
+        objectInstance: !ref device_instance
+        property: max-apdu-length-accepted
+        interval: !ref interval
+  seg:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'disc/seg'
+      subscribe:
+        objectType: device
+        objectInstance: !ref device_instance
+        property: segmentation-supported
+        interval: !ref interval
+  objlist:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'disc/objlist'
+      subscribe:
+        objectType: device
+        objectInstance: !ref device_instance
+        property: object-list
+        interval: !ref interval

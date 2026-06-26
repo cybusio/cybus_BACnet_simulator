@@ -1,0 +1,357 @@
+#------------------------------------------------------------------------------
+# BACnet Receive Service for Total Electrical Energy Consumption
+#------------------------------------------------------------------------------
+description: |
+  Receive service for BACnet device to map energy data to MQTT topics.
+
+metadata:
+  name: !sub 'Receive BACnet EnergyConsumption ${machine_common_name}'
+  version: 1.0.0
+  provider: OT/OPX
+  homepage: https://appme.miele.com/pages/display/MDEEP/Cybus+-+Connectware
+
+#------------------------------------------------------------------------------
+# Parameters Section
+#------------------------------------------------------------------------------
+parameters:
+  bacnet_connection_service_id:
+    type: string
+    description: 'Enter the Service ID from the BACnet Connection Service'
+    default: 'connection_bacnet_DA_115_2_Bacnet'
+  MODEL_NAME:
+    type: string
+    default: 'TotalElectricalEnergyConsumption'
+  FILTER_ENDPOINT_COUNT:
+    type: integer
+    default: 2
+  identifier_param:
+    type: string
+    description: 'global object identifier'
+    default: 'DA_115_2'
+
+  machine_common_name:
+    type: string
+    description: 'common name of the machine'
+    default: 'cpu538-glasur8'
+
+  PollInterval:
+    type: integer
+    description: 'Polling interval for BACnet devices'
+    default: 30000
+#-----
+  SumRealPower:
+    type: integer
+    description: 'Object instance for SumRealPower'
+    default: 57
+  SumRealPowerObjectType:
+    type: string
+    description: 'BACnet objectType for SumRealPower'
+    default: analog-input
+  SumRealPowerState:
+    type: string
+    description: 'define if read or not'
+    default: enabled
+#---
+  SumReactivePower:
+    type: integer
+    description: 'Object instance for SumReactivePower'
+    default: 0
+  SumReactivePowerObjectType:
+    type: string
+    description: 'BACnet objectType for SumReactivePower'
+    default: analog-input
+  SumReactivePowerState:
+    type: string
+    description: 'define if read or not'
+    default: disabled
+#---
+  SumApparentPower:
+    type: integer
+    description: 'Object instance for SumApparentPower'
+    default: 0
+  SumApparentPowerObjectType:
+    type: string
+    description: 'BACnet objectType for SumApparentPower'
+    default: analog-value
+  SumApparentPowerState:
+    type: string
+    description: 'define if read or not'
+    default: disabled
+#---
+  SumRealEnergy:
+    type: integer
+    description: 'Object instance for SumRealEnergy'
+    default: 61
+  SumRealEnergyObjectType:
+    type: string
+    description: 'BACnet objectType for SumRealEnergy'
+    default: analog-input
+  SumRealEnergyState:
+    type: string
+    description: 'define if read or not'
+    default: enabled
+#---
+  SumReactiveEnergy:
+    type: integer
+    description: 'Object instance for SumReactiveEnergy'
+    default: 0
+  SumReactiveEnergyObjectType:
+    type: string
+    description: 'BACnet objectType for SumReactiveEnergy'
+    default: analog-value
+  SumReactiveEnergyState:
+    type: string
+    description: 'define if read or not'
+    default: disabled
+#---
+  SumApparentEnergy:
+    type: integer
+    description: 'Object instance for SumApparentEnergy'
+    default: 0
+  SumApparentEnergyObjectType:
+    type: string
+    description: 'BACnet objectType for SumApparentEnergy'
+    default: analog-value
+  SumApparentEnergyState:
+    type: string
+    description: 'define if read or not'
+    default: disabled
+#------------------------------------------------------------------------------
+# Resources Section
+#------------------------------------------------------------------------------
+resources:
+  # SumRealPower Endpoint
+  bacnetSumRealPowerPresentValue:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      targetState: !ref SumRealPowerState
+      subscribe:
+        objectType: !ref SumRealPowerObjectType
+        objectInstance: !ref SumRealPower
+        property: present-value
+        interval: !ref PollInterval
+
+  # SumReactivePower Endpoint
+  bacnetSumReactivePowerPresentValue:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      targetState: !ref SumReactivePowerState
+      subscribe:
+        objectType: !ref SumReactivePowerObjectType
+        objectInstance: !ref SumReactivePower
+        property: present-value
+        interval: !ref PollInterval
+
+  # SumApparentPower Endpoint
+  bacnetSumApparentPowerPresentValue:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      targetState: !ref SumApparentPowerState
+      subscribe:
+        objectType: !ref SumApparentPowerObjectType
+        objectInstance: !ref SumApparentPower
+        property: present-value
+        interval: !ref PollInterval
+
+  # SumRealEnergy Endpoint
+  bacnetSumRealEnergyPresentValue:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      targetState: !ref SumRealEnergyState
+      subscribe:
+        objectType: !ref SumRealEnergyObjectType
+        objectInstance: !ref SumRealEnergy
+        property: present-value
+        interval: !ref PollInterval
+
+  # SumReactiveEnergy Endpoint
+  bacnetSumReactiveEnergyPresentValue:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      targetState: !ref SumReactiveEnergyState
+      subscribe:
+        objectType: !ref SumReactiveEnergyObjectType
+        objectInstance: !ref SumReactiveEnergy
+        property: present-value
+        interval: !ref PollInterval
+
+  # SumApparentEnergy Endpoint
+  bacnetSumApparentEnergyPresentValue:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      targetState: !ref SumApparentEnergyState
+      subscribe:
+        objectType: !ref SumApparentEnergyObjectType
+        objectInstance: !ref SumApparentEnergy
+        property: present-value
+        interval: !ref PollInterval
+
+#------------------------------------------------------------------------------
+
+  mapping_SumRealPower:
+    type: Cybus::Mapping
+    properties:
+      mappings:
+        - subscribe:
+            endpoint: !ref bacnetSumRealPowerPresentValue
+          rules:
+            - transform:
+                expression: '{ "value": $ }'
+          publish:
+            topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/nodes/SumRealPower'
+
+  mapping_SumReactivePower:
+    type: Cybus::Mapping
+    properties:
+      mappings:
+        - subscribe:
+            endpoint: !ref bacnetSumReactivePowerPresentValue
+          rules:
+            - transform:
+                expression: '{ "value": $ }'
+          publish:
+            topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/nodes/SumReactivePower'
+
+  mapping_SumApparentPower:
+    type: Cybus::Mapping
+    properties:
+      mappings:
+        - subscribe:
+            endpoint: !ref bacnetSumApparentPowerPresentValue
+          rules:
+            - transform:
+                expression: '{ "value": $ }'
+          publish:
+            topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/nodes/SumApparentPower'
+
+  mapping_SumRealEnergy:
+    type: Cybus::Mapping
+    properties:
+      mappings:
+        - subscribe:
+            endpoint: !ref bacnetSumRealEnergyPresentValue
+          rules:
+            - transform:
+                expression: '{ "value": $ }'
+          publish:
+            topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/nodes/SumRealEnergy'
+
+  mapping_SumReactiveEnergy:
+    type: Cybus::Mapping
+    properties:
+      mappings:
+        - subscribe:
+            endpoint: !ref bacnetSumReactiveEnergyPresentValue
+          rules:
+            - transform:
+                expression: '{ "value": $ }'
+          publish:
+            topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/nodes/SumReactiveEnergy'
+
+  mapping_SumApparentEnergy:
+    type: Cybus::Mapping
+    properties:
+      mappings:
+        - subscribe:
+            endpoint: !ref bacnetSumApparentEnergyPresentValue
+          rules:
+            - transform:
+                expression: '{ "value": $ }'
+          publish:
+            topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/nodes/SumApparentEnergy'
+#------------------------------------------------------------------------------
+
+  # Mapping1: Sammeln und Filtern der Daten
+  mapping1:
+    type: Cybus::Mapping
+    properties:
+      mappings:
+        - subscribe:
+            - topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/nodes/+subnode'
+              label: '{subnode}'
+          rules:
+            - collect: {}
+          publish:
+            topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/filtered'
+
+  # Mapping2: Transformation der gesammelten Daten
+  mapping2:
+    type: Cybus::Mapping
+    properties:
+      mappings:
+        - subscribe:
+            - topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/filtered'
+              label: 'filtered'
+          rules:
+            - burst:
+                maxSize: !ref FILTER_ENDPOINT_COUNT
+            - transform:
+                expression: '$[-1]'
+            - transform:
+                expression: !sub |
+                  (
+                    $get := function($obj,$a,$b){ $lookup($obj,$a) ? $lookup($obj,$a) : $lookup($obj,$b) };
+
+                    $sae := $get($,"SumApparentEnergy","sumApparentEnergy");
+                    $sap := $get($,"SumApparentPower","sumApparentPower");
+                    $sre := $get($,"SumRealEnergy","sumRealEnergy");
+                    $sree := $get($,"SumReactiveEnergy","sumReactiveEnergy");
+                    $srp := $get($,"SumRealPower","sumRealPower");
+                    $srrp := $get($,"SumReactivePower","sumReactivePower");
+
+                    $saeVal := $sae.value.value;
+                    $sapVal := $sap.value.value;
+                    $sreVal := $sre.value.value;
+                    $sreeVal := $sree.value.value;
+                    $srpVal := $srp.value.value;
+                    $srrpVal := $srrp.value.value;
+
+                    {
+                      "sumApparentEnergy": {
+                        "value": $exists($saeVal) and $saeVal >= 0 ? $saeVal : 0,
+                        "range": { "low": 0, "high": 0 },
+                        "unit":  $exists($saeVal) and $saeVal >= 0 ? "kVAh" : "NULL"
+                      },
+                      "sumApparentPower": {
+                        "value": $exists($sapVal) and $sapVal >= 0 ? $sapVal : 0,
+                        "range": { "low": 0, "high": 0 },
+                        "unit":  $exists($sapVal) and $sapVal >= 0 ? "kV·A" : "NULL"
+                      },
+                      "sumReactiveEnergy": {
+                        "value": $exists($sreeVal) and $sreeVal >= 0 ? $sreeVal : 0,
+                        "range": { "low": 0, "high": 0 },
+                        "unit":  $exists($sreeVal) and $sreeVal >= 0 ? "kvar·h" : "NULL"
+                      },
+                      "sumReactivePower": {
+                        "value": $exists($srrpVal) and $srrpVal >= 0 ? $srrpVal : 0,
+                        "range": { "low": 0, "high": 0 },
+                        "unit":  $exists($srrpVal) and $srrpVal >= 0 ? "kvar" : "NULL"
+                      },
+                      "sumRealEnergy": {
+                        "value": $exists($sreVal) and $sreVal >= 0 ? $sreVal : 0,
+                        "range": { "low": 0, "high": 0 },
+                        "unit":  $exists($sreVal) and $sreVal >= 0 ? "kW·h" : "NULL"
+                      },
+                      "sumRealPower": {
+                        "value": $exists($srpVal) and $srpVal >= 0 ? $srpVal : 0,
+                        "range": { "low": 0, "high": 0 },
+                        "unit":  $exists($srpVal) and $srpVal >= 0 ? "kW" : "NULL"
+                      },
+                      "identifier": "${identifier_param}",
+                      "timestamp": $millis()
+                    }
+                  )
+          publish:
+            topic: !sub '${Cybus::MqttRoot}/${MODEL_NAME}/combined'

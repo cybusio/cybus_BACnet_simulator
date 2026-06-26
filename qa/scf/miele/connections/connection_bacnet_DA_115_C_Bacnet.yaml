@@ -1,0 +1,66 @@
+#------------------------------------------------------------------------------
+# Meta Data Section
+#------------------------------------------------------------------------------
+description: |
+  This file covers a BACnet Connection.
+metadata:
+  name: !sub 'Connection BACnet ${machine_common_name}'
+  version: 1.0.0
+  provider: OT/OPX
+  homepage: https://appme.miele.com/pages/display/MDEEP/Cybus+-+Connectware
+
+#------------------------------------------------------------------------------
+# Parameters
+#------------------------------------------------------------------------------
+parameters:
+  bacnet_host:
+    type: string
+    description: 'IP address of the BACnet device'
+    default: 10.188.175.52
+
+  bacnet_port:
+    type: number
+    description: 'Port number for the BACnet device'
+    default: 47808
+
+  device_instance:
+    type: number
+    description: 'Device instance of the BACnet device'
+    default: 2098185
+
+  machine_common_name:
+    type: string
+    description: 'common name of the machine'
+    default: 'cpu707-sares-pressen'
+
+  initial_reconnect_delay:
+    type: integer
+    description: 'Initial delay for reconnect attempts (ms)'
+    default: 1000
+
+  max_reconnect_delay:
+    type: integer
+    description: 'Maximum delay for reconnect attempts (ms)'
+    default: 30000
+
+  increment_factor:
+    type: integer
+    description: 'Factor by which the reconnect delay is incremented'
+    default: 2
+
+#------------------------------------------------------------------------------
+# Endpoint Attribute
+#------------------------------------------------------------------------------
+resources:
+  bacnet_connection:
+    type: Cybus::Connection
+    properties:
+      protocol: Bacnet
+      targetState: connected
+      connection:
+        deviceInstance: !ref device_instance
+        deviceAddress: !sub '${bacnet_host}:${bacnet_port}'
+        connectionStrategy:
+          initialDelay: !ref initial_reconnect_delay
+          maxDelay: !ref max_reconnect_delay
+          incrementFactor: !ref increment_factor

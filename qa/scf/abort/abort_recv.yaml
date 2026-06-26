@@ -1,0 +1,61 @@
+#------------------------------------------------------------------------------
+# Abort / recovery factory e2e. One receive, three endpoints that exercise the
+# abort-reason + large-array-recovery paths AS DEPLOYED ON CONNECTWARE:
+#   objlist  — device object-list (too-large BACnetARRAY): recovers via chunked
+#              reads on a size-abort device (miele, reason 1) → array on MQTT;
+#              surfaces unchanged on a reply-time device (reason 8, not size).
+#   pv       — a real analog-value present-value: must keep flowing.
+#   missing  — a mis-scoped analog-value (unknown-object): must NOT flow, and the
+#              PM log must name the point + the SCF fix (describeBacnetError).
+# Deploy against both a size-abort device and a reply-time(reason 8) device to
+# prove graceful degradation: the connection stays up, good points keep flowing.
+#------------------------------------------------------------------------------
+description: BACnet abort/recovery factory probe (array recovery + graceful degradation)
+metadata:
+  name: !sub 'Abort probe ${machine_common_name}'
+  version: 1.0.0
+parameters:
+  bacnet_connection_service_id:
+    type: string
+  machine_common_name:
+    type: string
+    default: abortprobe
+  device_instance:
+    type: integer
+  interval:
+    type: integer
+    default: 2000
+resources:
+  objlist:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'abort/objlist'
+      subscribe:
+        objectType: device
+        objectInstance: !ref device_instance
+        property: object-list
+        interval: !ref interval
+  pv:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'abort/pv'
+      subscribe:
+        objectType: analog-value
+        objectInstance: 101009
+        property: present-value
+        interval: !ref interval
+  missing:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'abort/missing'
+      subscribe:
+        objectType: analog-value
+        objectInstance: 999999
+        property: present-value
+        interval: !ref interval

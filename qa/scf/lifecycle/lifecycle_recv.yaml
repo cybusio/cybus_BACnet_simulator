@@ -1,0 +1,32 @@
+#------------------------------------------------------------------------------
+# Lifecycle probe receive — one endpoint polling the device object-name (a
+# property every BACnet device implements), so the MQTT stream is a continuous
+# heartbeat: present while connected, gone when the peer drops, back on recover.
+#------------------------------------------------------------------------------
+description: Lifecycle probe receive (device object-name heartbeat)
+metadata:
+  name: !sub 'Lifecycle probe ${machine_common_name}'
+  version: 1.0.0
+parameters:
+  bacnet_connection_service_id:
+    type: string
+  machine_common_name:
+    type: string
+    default: lifecycle
+  device_instance:
+    type: integer
+  interval:
+    type: integer
+    default: 2000
+resources:
+  name:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'life/name'
+      subscribe:
+        objectType: device
+        objectInstance: !ref device_instance
+        property: object-name
+        interval: !ref interval

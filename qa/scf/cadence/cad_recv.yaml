@@ -1,0 +1,31 @@
+#------------------------------------------------------------------------------
+# Cadence/jitter probe — 8 endpoints on ONE connection, all polling the device
+# object-name at the same interval. The adapter's handleSubscribe applies a
+# one-shot first-poll jitter in [0, interval) so many endpoints on a 100-point
+# meter don't burst the shared process-wide TSM pool on (re)connect. The e2e
+# measures the spread of first-message arrival times across these 8 topics.
+#------------------------------------------------------------------------------
+description: Cadence/jitter probe receive (8 endpoints, one connection)
+metadata:
+  name: !sub 'Cadence probe ${machine_common_name}'
+  version: 1.0.0
+parameters:
+  bacnet_connection_service_id:
+    type: string
+  machine_common_name:
+    type: string
+    default: cad
+  device_instance:
+    type: integer
+  interval:
+    type: integer
+    default: 4000
+resources:
+  e0: { type: Cybus::Endpoint, properties: { protocol: Bacnet, connection: !ref '${bacnet_connection_service_id}::bacnet_connection', topic: 'cad/e0', subscribe: { objectType: device, objectInstance: !ref device_instance, property: object-name, interval: !ref interval } } }
+  e1: { type: Cybus::Endpoint, properties: { protocol: Bacnet, connection: !ref '${bacnet_connection_service_id}::bacnet_connection', topic: 'cad/e1', subscribe: { objectType: device, objectInstance: !ref device_instance, property: object-name, interval: !ref interval } } }
+  e2: { type: Cybus::Endpoint, properties: { protocol: Bacnet, connection: !ref '${bacnet_connection_service_id}::bacnet_connection', topic: 'cad/e2', subscribe: { objectType: device, objectInstance: !ref device_instance, property: object-name, interval: !ref interval } } }
+  e3: { type: Cybus::Endpoint, properties: { protocol: Bacnet, connection: !ref '${bacnet_connection_service_id}::bacnet_connection', topic: 'cad/e3', subscribe: { objectType: device, objectInstance: !ref device_instance, property: object-name, interval: !ref interval } } }
+  e4: { type: Cybus::Endpoint, properties: { protocol: Bacnet, connection: !ref '${bacnet_connection_service_id}::bacnet_connection', topic: 'cad/e4', subscribe: { objectType: device, objectInstance: !ref device_instance, property: object-name, interval: !ref interval } } }
+  e5: { type: Cybus::Endpoint, properties: { protocol: Bacnet, connection: !ref '${bacnet_connection_service_id}::bacnet_connection', topic: 'cad/e5', subscribe: { objectType: device, objectInstance: !ref device_instance, property: object-name, interval: !ref interval } } }
+  e6: { type: Cybus::Endpoint, properties: { protocol: Bacnet, connection: !ref '${bacnet_connection_service_id}::bacnet_connection', topic: 'cad/e6', subscribe: { objectType: device, objectInstance: !ref device_instance, property: object-name, interval: !ref interval } } }
+  e7: { type: Cybus::Endpoint, properties: { protocol: Bacnet, connection: !ref '${bacnet_connection_service_id}::bacnet_connection', topic: 'cad/e7', subscribe: { objectType: device, objectInstance: !ref device_instance, property: object-name, interval: !ref interval } } }

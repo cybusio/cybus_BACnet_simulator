@@ -1,0 +1,89 @@
+#------------------------------------------------------------------------------
+# R/W receive (block style). Per writable object: a READ endpoint (subscribe
+# present-value -> rw/<obj>) and a WRITE endpoint (write block -> rw/<obj>w/set).
+# propertyTag forces the BACnet datatype. Covers REAL (AnalogValue), UNSIGNED
+# (MultiStateValue), BOOL (BinaryValue). Round-trip: publish rw/<obj>w/set, read rw/<obj>.
+#------------------------------------------------------------------------------
+description: R/W probe receive (read+write pairs across datatypes)
+metadata:
+  name: !sub 'RW probe ${machine_common_name}'
+  version: 1.0.0
+parameters:
+  bacnet_connection_service_id:
+    type: string
+  machine_common_name:
+    type: string
+    default: rwprobe
+  interval:
+    type: integer
+    default: 2000
+resources:
+  av0:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'rw/av0'
+      subscribe:
+        objectType: analog-value
+        objectInstance: 0
+        property: present-value
+        interval: !ref interval
+  av0w:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'rw/av0w'
+      write:
+        objectType: analog-value
+        objectInstance: 0
+        property: present-value
+        propertyTag: 4
+        priority: 15
+  mv0:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'rw/mv0'
+      subscribe:
+        objectType: multi-state-value
+        objectInstance: 0
+        property: present-value
+        interval: !ref interval
+  mv0w:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'rw/mv0w'
+      write:
+        objectType: multi-state-value
+        objectInstance: 0
+        property: present-value
+        propertyTag: 2
+        priority: 15
+  bv0:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'rw/bv0'
+      subscribe:
+        objectType: binary-value
+        objectInstance: 0
+        property: present-value
+        interval: !ref interval
+  bv0w:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref '${bacnet_connection_service_id}::bacnet_connection'
+      topic: 'rw/bv0w'
+      write:
+        objectType: binary-value
+        objectInstance: 0
+        property: present-value
+        propertyTag: 9
+        priority: 15

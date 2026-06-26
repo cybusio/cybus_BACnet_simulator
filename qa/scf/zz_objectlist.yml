@@ -1,0 +1,39 @@
+description: |
+  BACnet object-list large-array e2e — reads a device's full object inventory
+  (~100 objects). object-list is the large array read at connection/discovery; it
+  exceeds one APDU and is recovered element-by-element. Used to verify the array
+  flows through MQTT intact.
+metadata:
+  name: zz_objectlist
+  provider: cybus
+  version: 1.0.0
+parameters:
+  ipAddress:
+    type: string
+    default: '172.18.0.1'
+  port:
+    type: number
+    default: 47823
+  Device_Instance:
+    type: number
+    default: 2000010
+resources:
+  connection:
+    type: Cybus::Connection
+    properties:
+      protocol: Bacnet
+      targetState: connected
+      connection:
+        deviceInstance: !ref Device_Instance
+        deviceAddress: !sub '${ipAddress}:${port}'
+  objectList:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref connection
+      topic: objectList
+      subscribe:
+        interval: 5000
+        property: object-list
+        objectType: device
+        objectInstance: !ref Device_Instance
