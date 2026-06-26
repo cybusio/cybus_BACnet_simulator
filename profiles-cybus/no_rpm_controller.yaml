@@ -1,0 +1,107 @@
+# =============================================================================
+# No-RPM Controller — rejects ReadPropertyMultiple with unrecognizedService
+# =============================================================================
+#
+# Simulates a device that does not implement RPM at all. When a client
+# sends a ReadPropertyMultiple request, the device responds with a BACnet
+# REJECT PDU (reason 9: unrecognizedService). Individual ReadProperty
+# works normally.
+#
+# This is common in older BACnet devices and gateways that only implement
+# the minimal RP service set.
+#
+# Behaviors this profile triggers:
+#   1. RPM requests → REJECT(9) — client must fall back to individual RP
+#   2. ReadProperty works normally for all objects
+#   3. Moderate response delay simulating mid-range embedded hardware
+#
+# Tuning:
+#   - Set disable_rpm to false to enable RPM (becomes a normal controller)
+#   - Adjust abort_reason for different abort codes on oversized RP responses
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47816
+  device_id: 600001
+
+device:
+  vendor: Honeywell
+  vendor_name: "Honeywell Building Solutions"
+  model_name: "XL50-NoRPM"
+  firmware_revision: "4.10"
+  application_software_version: "4.10.2"
+  protocol_revision: 9           # ASHRAE 135-2004
+
+network:
+  max_apdu: 480
+  segmentation: noSegmentation
+
+realism:
+  response_delay_ms: 20
+  response_jitter_ms: 10
+  tsm_pool_size: 0               # Unlimited
+  abort_reason: 1                # bufferOverflow on oversized RP
+  disable_rpm: true              # REJECT(9) on any RPM request
+
+objects:
+  # --- Zone temperature sensors ---
+  - object_type: AnalogInput
+    instance: 1
+    name: zone_temp_1
+    units: degreesCelsius
+    default: 22.5
+
+  - object_type: AnalogInput
+    instance: 2
+    name: zone_temp_2
+    units: degreesCelsius
+    default: 21.9
+
+  - object_type: AnalogInput
+    instance: 3
+    name: outside_air_temp
+    units: degreesCelsius
+    default: 18.4
+
+  - object_type: AnalogInput
+    instance: 4
+    name: zone_humidity
+    units: percentRelativeHumidity
+    default: 46.3
+
+  # --- Setpoints ---
+  - object_type: AnalogOutput
+    instance: 1
+    name: cooling_setpoint
+    units: degreesCelsius
+    default: 24.0
+
+  - object_type: AnalogOutput
+    instance: 2
+    name: heating_setpoint
+    units: degreesCelsius
+    default: 20.0
+
+  # --- Status bits ---
+  - object_type: BinaryInput
+    instance: 1
+    name: fan_status
+    default: true
+
+  - object_type: BinaryInput
+    instance: 2
+    name: compressor_status
+    default: false
+
+  # --- Mode ---
+  - object_type: BinaryValue
+    instance: 1
+    name: occupancy_mode
+    default: true
+
+  - object_type: BinaryValue
+    instance: 2
+    name: alarm_active
+    default: false

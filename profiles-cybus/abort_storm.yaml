@@ -1,0 +1,26 @@
+# =============================================================================
+# Abort Storm — device ABORTs every request, including the liveness probe
+# =============================================================================
+# Models the worst-case fragile/overloaded device: it answers EVERY read
+# (endpoint present-value AND the device/object-name liveness probe) with an
+# ABORT. An ABORT is proof-of-life (a dead UDP peer only times out), so the
+# client must classify it as "alive but limited" and NOT enter a reconnect
+# storm. Exercises BacnetConnection._onProbeFailure / peerRespondedError.
+#
+# abort_reason 1 (buffer-overflow) mirrors the Miele DA_115 field case.
+# =============================================================================
+
+extends: miele_energy_meter.yaml
+
+simulator:
+  port: 47821
+  device_id: 1014008
+
+device:
+  model_name: "Abort-Storm-Device"
+
+realism:
+  response_delay_ms: 10
+  force_abort: true
+  abort_device_reads: true
+  abort_reason: 1

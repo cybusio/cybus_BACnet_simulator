@@ -1,0 +1,19 @@
+# Dedicated device for the reconnect / health-check test — stopped & restarted
+# mid-session to simulate a factory device power-cycle (silent peer, no TCP FIN).
+extends: _base.yaml
+
+simulator:
+  port: 47869
+  device_id: 700001
+
+device:
+  vendor: Generic
+  model_name: "ReconnectTarget"
+  protocol_revision: 22
+
+network:
+  max_apdu: 1476
+  segmentation: noSegmentation
+
+objects:
+  - { object_type: AnalogInput, instance: 1, name: probe_point, units: noUnits, default: 1.0 }

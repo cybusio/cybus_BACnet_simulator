@@ -185,6 +185,11 @@ objects:
       - "auto"
       - "economy"
 
+  # --- Notification class (provides BIT_STRING via ackRequired) ---
+  - object_type: NotificationClass
+    instance: 1
+    name: critical_alarm_class
+
 # Scale object count for stress testing (adds AI objects after existing ones):
 # object_padding:
 #   template: hvac_controller    # VAV zones (temp, setpoint, damper, airflow, reheat)

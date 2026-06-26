@@ -1,0 +1,46 @@
+# =============================================================================
+# Empty Device — no application objects, only the device object itself
+# =============================================================================
+#
+# Simulates a freshly provisioned or unconfigured device that has no
+# application objects. The only object present is the mandatory Device
+# object. The object-list property contains only (device, <id>).
+#
+# This tests client behavior when discovering a device with an empty
+# object-list — the client should not crash or hang when there's nothing
+# to poll beyond the device object.
+#
+# Behaviors this profile triggers:
+#   1. object-list contains only the Device object
+#   2. ReadProperty on device object works normally
+#   3. RPM on empty object-list returns only device properties
+#
+# Tuning:
+#   - Add objects to make this a normal device
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47819
+  device_id: 600004
+
+device:
+  vendor: Generic
+  vendor_name: "Generic BACnet Device"
+  model_name: "EmptyDevice-v1"
+  firmware_revision: "1.0"
+  application_software_version: "1.0.0"
+  protocol_revision: 22
+
+network:
+  max_apdu: 1476
+  segmentation: segmentedBoth
+
+realism:
+  response_delay_ms: 5
+  response_jitter_ms: 2
+  tsm_pool_size: 0
+  abort_reason: 0
+
+objects: []

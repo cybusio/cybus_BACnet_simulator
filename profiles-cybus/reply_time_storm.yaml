@@ -1,0 +1,33 @@
+# =============================================================================
+# Reply-Time Storm — device ABORTs every read with reason 8 (reply-time)
+# =============================================================================
+# Sibling of abort_storm: identical behaviour, only the abort reason differs
+# (8 = application-exceeded-reply-time instead of 1 = buffer-overflow).
+#
+# The distinction matters. Reason 1 means "this response won't fit" — the
+# client can work around it by reading an array element-by-element. Reason 8
+# means "I gave up on time" — NO smaller request helps, so it is not
+# recoverable by any means. The client must surface a reason-8 abort even on an
+# array property (object-list) that would otherwise qualify for the indexed
+# fallback, and must stay connected (an ABORT is proof-of-life).
+#
+# abort_device_reads:true so the device's own object-list / object-name reads
+# also abort: that lets a test prove reason-gating on the SAME property that
+# abort_storm/miele recover via the indexed fallback. The connect probe aborts
+# too, but the client classifies any ABORT as "alive" and connects regardless.
+# =============================================================================
+
+extends: miele_energy_meter.yaml
+
+simulator:
+  port: 47822
+  device_id: 1014009
+
+device:
+  model_name: "Reply-Time-Storm-Device"
+
+realism:
+  response_delay_ms: 10
+  force_abort: true
+  abort_device_reads: true
+  abort_reason: 8

@@ -1,0 +1,104 @@
+# =============================================================================
+# Abort Segmentation — aborts with segmentationNotSupported (reason 4)
+# =============================================================================
+#
+# Simulates a device that correctly returns the ASHRAE-mandated abort reason
+# when a response would require segmentation but the device cannot segment.
+# Unlike legacy devices that return bufferOverflow (1) or other codes, this
+# device sends the spec-correct segmentationNotSupported (4).
+#
+# Behaviors this profile triggers:
+#   1. RPM on large object sets → abort(segmentationNotSupported)
+#   2. RP on individual objects works normally (fits in single APDU)
+#   3. Clients must handle abort code 4 gracefully
+#
+# Tuning:
+#   - Set abort_reason to 1 for bufferOverflow instead
+#   - Increase max_apdu to 1476 to allow larger responses
+#   - Set segmentation to segmentedBoth to eliminate aborts entirely
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47817
+  device_id: 600002
+
+device:
+  vendor: Schneider
+  vendor_name: "Schneider Electric"
+  model_name: "SmartX-IP"
+  firmware_revision: "3.50"
+  application_software_version: "3.50.1"
+  protocol_revision: 14
+
+network:
+  max_apdu: 480
+  segmentation: noSegmentation
+
+realism:
+  response_delay_ms: 15
+  response_jitter_ms: 8
+  tsm_pool_size: 0
+  abort_reason: 4                # segmentationNotSupported (ASHRAE-correct)
+
+objects:
+  # --- Building management points ---
+  - object_type: AnalogInput
+    instance: 1
+    name: zone_temp
+    units: degreesCelsius
+    default: 21.8
+
+  - object_type: AnalogInput
+    instance: 2
+    name: supply_air_temp
+    units: degreesCelsius
+    default: 14.2
+
+  - object_type: AnalogInput
+    instance: 3
+    name: return_air_temp
+    units: degreesCelsius
+    default: 23.5
+
+  - object_type: AnalogInput
+    instance: 4
+    name: outdoor_temp
+    units: degreesCelsius
+    default: 12.6
+
+  - object_type: AnalogInput
+    instance: 5
+    name: zone_humidity
+    units: percentRelativeHumidity
+    default: 50.1
+
+  # --- Actuator outputs ---
+  - object_type: AnalogOutput
+    instance: 1
+    name: damper_cmd
+    units: percent
+    default: 55.0
+
+  - object_type: AnalogOutput
+    instance: 2
+    name: valve_cmd
+    units: percent
+    default: 30.0
+
+  # --- Status ---
+  - object_type: BinaryInput
+    instance: 1
+    name: fan_running
+    default: true
+
+  - object_type: BinaryValue
+    instance: 1
+    name: schedule_active
+    default: true
+
+  - object_type: BinaryValue
+    instance: 2
+    name: frost_protect
+    default: false

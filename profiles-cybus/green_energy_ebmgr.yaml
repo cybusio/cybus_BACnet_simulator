@@ -318,7 +318,8 @@ objects:
     name: high_temp_alarm
     default: false
 
-# Uncomment to scale to 194 objects (44 base + 150 padded)
-# object_padding:
-#   template: district_heating
-#   count: 150
+# 44 base objects + 50 padded = 94 total — RPM on object-list (~564B)
+# overflows 480B APDU, triggering abort code 11 (apduTooLong)
+object_padding:
+  template: district_heating
+  count: 50

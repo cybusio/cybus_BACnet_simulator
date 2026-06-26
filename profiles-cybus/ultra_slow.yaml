@@ -1,0 +1,77 @@
+# =============================================================================
+# Ultra-Slow Device — slowest responder still within the C-stack retry window
+# =============================================================================
+#
+# Simulates a device that takes 2.5s to respond — well within a single
+# C-stack apduTimeoutMs (default 3000ms) so the adapter's retry path is
+# NOT engaged, but slow enough to exercise per-endpoint deadline budgeting
+# and the smear-first-poll path against a serialised response pipeline.
+#
+# Why not 5000ms+ (the prior default)?
+#   The C-stack retries at apduTimeoutMs (3000ms default). Any
+#   response_delay_ms >= 3000 generates multiple retry requests; each
+#   retry reuses the BACnet invoke_id but the SSM state mutates, so the
+#   eventual response no longer matches the active transaction and is
+#   silently dropped. End-to-end: zero endpoint coverage. Tested
+#   empirically: 2500ms produces 4/4 endpoint coverage, 4000ms produces
+#   0/4. The "post-TSM-timeout" semantics that the previous 12000ms value
+#   targeted require operator-side apduTimeoutMs >= response_delay_ms +
+#   safety; if you need that test path, set apduTimeoutMs in the SCF
+#   explicitly and raise this delay accordingly.
+#
+# Behaviors this profile triggers:
+#   1. All responses delayed 2.5s — pure latency stress
+#   2. Tests per-endpoint peerDeadlineMs budgeting
+#   3. Combined with 4 endpoints, validates the poll-smear works at low N
+#
+# Tuning:
+#   - response_delay_ms < apduTimeoutMs (3000) — responses succeed
+#   - response_delay_ms >= apduTimeoutMs        — responses silently drop
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47818
+  device_id: 600003
+
+device:
+  vendor: Generic
+  vendor_name: "Generic BACnet Device"
+  model_name: "SlowGateway-v1"
+  firmware_revision: "1.0"
+  application_software_version: "1.0.0"
+  protocol_revision: 12
+
+network:
+  max_apdu: 480
+  segmentation: noSegmentation
+
+realism:
+  response_delay_ms: 2500        # 2.5s — slowest that's still under apduTimeoutMs=3000
+  response_jitter_ms: 200        # < 500ms so worst-case stays under 3000ms
+  tsm_pool_size: 0               # unlimited
+  abort_reason: 0                # No abort behavior — just slow
+
+objects:
+  - object_type: AnalogInput
+    instance: 1
+    name: sensor_temp
+    units: degreesCelsius
+    default: 20.5
+
+  - object_type: AnalogInput
+    instance: 2
+    name: sensor_humidity
+    units: percentRelativeHumidity
+    default: 55.0
+
+  - object_type: BinaryInput
+    instance: 1
+    name: door_contact
+    default: false
+
+  - object_type: BinaryValue
+    instance: 1
+    name: system_enable
+    default: true
