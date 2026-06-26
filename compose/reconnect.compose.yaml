@@ -1,0 +1,15 @@
+# Opt-in: device that the reconnect-test stops/starts to simulate a power-cycle.
+#   docker compose -f reconnect.compose.yaml -p bacnet_simulator up bacnet-reconnect-target
+services:
+  bacnet-reconnect-target:
+    build: /home/dj/protocols/BACnet_simulator
+    container_name: bacnet_simulator-bacnet-reconnect-target-1  # pinned: reconnect-test docker-stops this exact name
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_METRICS_PORT: "9169"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/reconnect_target.yaml:/app/profiles/reconnect_target.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

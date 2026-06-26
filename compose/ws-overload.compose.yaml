@@ -1,0 +1,19 @@
+# Opt-in: OVERLOADED cert WeatherStation (port 47868, dev 2000302) for the
+# over-polling resilience soak. Same WeatherStation as weatherstation_norain
+# (rainCurrent absent) but TSM-pool-12 + 200/150ms delay + reason-8 aborts.
+#   docker compose -f ws-overload.compose.yaml -p bacnet_simulator up bacnet-weatherstation-overloaded
+# Driven by scripts/ws-overload-soak.sh.
+services:
+  bacnet-weatherstation-overloaded:
+    build: /home/dj/protocols/BACnet_simulator
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+      BACNET_METRICS_PORT: "9168"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/weatherstation_overloaded.yaml:/app/profiles/weatherstation_overloaded.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/weatherstation_norain.yaml:/app/profiles/weatherstation_norain.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

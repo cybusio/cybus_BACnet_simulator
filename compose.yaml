@@ -1,11 +1,11 @@
 # =============================================================================
-# BACnet Simulator — 6 virtual devices on host network
+# BACnet Simulator — 13 virtual devices on host network
 # =============================================================================
 # Port and device_id are read from each profile's simulator: block.
 # Only metrics_port (orchestration concern) is set here per service.
 #
 # Usage:
-#   docker compose up --build          # start all 6
+#   docker compose up --build          # start all 13
 #   docker compose up bacnet-legacy    # start only legacy
 #   docker compose logs -f             # follow all logs
 # =============================================================================
@@ -17,6 +17,9 @@ x-common: &common
     BACNET_PROFILES_DIR: /app/profiles
     BACNET_LOG_FORMAT: json
     BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+    # Test-only: drop fraction of incoming APDUs. Default 0 (disabled).
+    # Set via shell env for Phase 6 soak: BACNET_PACKET_DROP_PROB=0.5 docker compose up -d
+    BACNET_PACKET_DROP_PROB: ${BACNET_PACKET_DROP_PROB:-0}
 
 services:
 
@@ -78,5 +81,77 @@ services:
     volumes:
       - ./profiles-cybus/miele_overloaded.yaml:/app/profiles/miele_overloaded.yaml:ro
       - ./profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-abort-storm:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9121"
+    volumes:
+      - ./profiles-cybus/abort_storm.yaml:/app/profiles/abort_storm.yaml:ro
+      - ./profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-reply-time-storm:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9111"
+    volumes:
+      - ./profiles-cybus/reply_time_storm.yaml:/app/profiles/reply_time_storm.yaml:ro
+      - ./profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-no-rpm:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9106"
+    volumes:
+      - ./profiles-cybus/no_rpm_controller.yaml:/app/profiles/no_rpm_controller.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-abort-seg:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9107"
+    volumes:
+      - ./profiles-cybus/abort_segmentation.yaml:/app/profiles/abort_segmentation.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-ultra-slow:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9108"
+    volumes:
+      - ./profiles-cybus/ultra_slow.yaml:/app/profiles/ultra_slow.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-empty:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9109"
+    volumes:
+      - ./profiles-cybus/empty_device.yaml:/app/profiles/empty_device.yaml:ro
+      - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+
+  bacnet-cov-emitter:
+    <<: *common
+    environment:
+      <<: *common-env
+      BACNET_METRICS_PORT: "9110"
+    volumes:
+      - ./profiles-cybus/cov_emitter.yaml:/app/profiles/cov_emitter.yaml:ro
       - ./profiles/_base.yaml:/app/profiles/_base.yaml:ro
       - ./profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

@@ -1,0 +1,14 @@
+# Minimal BBMD service for live-testing the adapter's foreign-device registration.
+# Run with:
+#   docker compose -p bbmd-test -f compose/bbmd.compose.yaml up
+services:
+  bacnet-bbmd:
+    image: python:3.11-alpine
+    container_name: bacnet-bbmd
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      BBMD_PORT: "47900"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/qa/bbmd/bbmd_service.py:/app/bbmd.py:ro
+    command: python /app/bbmd.py

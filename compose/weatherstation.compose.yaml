@@ -1,0 +1,27 @@
+# Opt-in: cert WeatherStation devices (mirrors receive_bacnet_WeatherStation.yaml).
+#   docker compose -f weatherstation.compose.yaml -p bacnet_simulator up bacnet-weatherstation bacnet-weatherstation-norain
+services:
+  bacnet-weatherstation:
+    build: /home/dj/protocols/BACnet_simulator
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+      BACNET_METRICS_PORT: "9166"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/weatherstation.yaml:/app/profiles/weatherstation.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+  bacnet-weatherstation-norain:
+    build: /home/dj/protocols/BACnet_simulator
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+      BACNET_METRICS_PORT: "9167"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/weatherstation_norain.yaml:/app/profiles/weatherstation_norain.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

@@ -1,0 +1,17 @@
+# Opt-in: device with a ~20001-element state-text array (large non-object-list array).
+#   docker compose -f bigarray.compose.yaml -p bacnet_simulator up --build bacnet-bigarray
+services:
+  bacnet-bigarray:
+    build: /home/dj/protocols/BACnet_simulator
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+      BACNET_PACKET_DROP_PROB: ${BACNET_PACKET_DROP_PROB:-0}
+      BACNET_METRICS_PORT: "9164"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/bigarray_controller.yaml:/app/profiles/bigarray_controller.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

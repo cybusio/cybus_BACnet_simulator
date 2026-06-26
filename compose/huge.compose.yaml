@@ -1,0 +1,17 @@
+# Opt-in: a ~1000-object BACnet device for large-array stress testing.
+#   docker compose -f huge.compose.yaml -p bacnet_simulator up bacnet-huge
+services:
+  bacnet-huge:
+    build: /home/dj/protocols/BACnet_simulator
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+      BACNET_PACKET_DROP_PROB: ${BACNET_PACKET_DROP_PROB:-0}
+      BACNET_METRICS_PORT: "9160"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/huge_controller.yaml:/app/profiles/huge_controller.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

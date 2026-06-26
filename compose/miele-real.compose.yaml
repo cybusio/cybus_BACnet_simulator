@@ -1,0 +1,15 @@
+# Opt-in: faithful Miele energy meter (real factory object model, DA_115_12).
+#   docker compose -f miele-real.compose.yaml -p bacnet_simulator up bacnet-miele-real
+services:
+  bacnet-miele-real:
+    build: /home/dj/protocols/BACnet_simulator
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+      BACNET_METRICS_PORT: "9168"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/miele_real_meter.yaml:/app/profiles/miele_real_meter.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro

@@ -1,0 +1,31 @@
+# Opt-in: second mega (object-list 20001) + second bigarray (state-text 20001),
+# so large objects AND large arrays each span multiple device profiles in the
+# 32-device mega-scale mix (alongside bacnet-mega + bacnet-bigarray).
+#   docker compose -f largescale.compose.yaml -p bacnet_simulator up bacnet-mega-b bacnet-bigarray-b
+services:
+  bacnet-mega-b:
+    build: /home/dj/protocols/BACnet_simulator
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+      BACNET_METRICS_PORT: "9162"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/mega_controller_b.yaml:/app/profiles/mega_controller_b.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
+  bacnet-bigarray-b:
+    build: /home/dj/protocols/BACnet_simulator
+    network_mode: host
+    environment:
+      BACNET_PROFILES_DIR: /app/profiles
+      BACNET_LOG_FORMAT: json
+      BACNET_LOG_LEVEL: ${BACNET_LOG_LEVEL:-INFO}
+      BACNET_METRICS_PORT: "9165"
+    volumes:
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/bigarray_controller_b.yaml:/app/profiles/bigarray_controller_b.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles-cybus/miele_energy_meter.yaml:/app/profiles/_parents/miele_energy_meter.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/_base.yaml:/app/profiles/_base.yaml:ro
+      - /home/dj/protocols/BACnet_simulator/profiles/vendors.yaml:/app/profiles/vendors.yaml:ro
