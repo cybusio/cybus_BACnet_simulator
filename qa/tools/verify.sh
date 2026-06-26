@@ -16,7 +16,7 @@ MQTT_PORT="${MQTT_PORT:-1883}"
 
 if [[ $# -lt 2 ]]; then
   cat <<'USAGE'
-Usage: ./scripts/verify.sh <cw-host> <scf-file> [--timeout N]
+Usage: ./qa/tools/verify.sh <cw-host> <scf-file> [--timeout N]
 
   cw-host     Connectware host IP (where the MQTT broker runs)
   scf-file    The same SCF YAML that was uploaded to Connectware
@@ -30,8 +30,8 @@ Environment:
   MQTT_PORT     MQTT port (default: 1883)
 
 Example:
-  ./scripts/verify.sh 192.168.1.100 scf/newlift_gateway.yml
-  ./scripts/verify.sh 10.0.0.5 scf/miele_energy_meter.yml --timeout 120
+  ./qa/tools/verify.sh 192.168.1.100 scf/newlift_gateway.yml
+  ./qa/tools/verify.sh 10.0.0.5 scf/miele_energy_meter.yml --timeout 120
 USAGE
   exit 1
 fi
@@ -55,8 +55,8 @@ fi
 [[ ! -f "$SCF_FILE" ]] && echo "ERROR: SCF not found: $SCF_FILE" && exit 1
 
 # Derive service name from SCF metadata
-# CW strips hyphens and underscores from service name in MQTT topics
-SCF_NAME=$(grep '^\s*name:' "$SCF_FILE" | head -1 | sed 's/.*name:\s*//' | tr -d "'" | tr -d '"' | tr -d ' ' | tr -d '_' | tr -d '-')
+# CW uses metadata.name as-is for MQTT topic prefix
+SCF_NAME=$(grep '^\s*name:' "$SCF_FILE" | head -1 | sed 's/.*name:\s*//' | tr -d "'" | tr -d '"' | xargs)
 TOPIC_PREFIX="services/${SCF_NAME}"
 
 # Extract endpoint topics from SCF
@@ -68,8 +68,13 @@ if [[ "$TOPIC_COUNT" -eq 0 ]]; then
   exit 1
 fi
 
-# Find protocol-mapper container
+# Find protocol-mapper container — log analysis is mandatory, so an empty result
+# is a hard failure (a silent skip would let log regressions pass unnoticed).
 PM_CONTAINER=$(docker ps --format '{{.Names}}' | grep -i protocol-mapper | head -1)
+if [[ -z "$PM_CONTAINER" ]]; then
+  echo "ERROR: no protocol-mapper container found — cannot run log analysis" >&2
+  exit 1
+fi
 
 echo "=== BACnet SCF Verification ==="
 echo "CW host:    $CW_HOST"
@@ -119,6 +124,8 @@ echo "── Results ──"
 echo "  Received: $RECEIVED / $TOPIC_COUNT in ${ELAPSED}s"
 
 if [[ "$RECEIVED" -ge "$TOPIC_COUNT" ]]; then
+  # Presence check only: each topic published >=1 message. Value sanity is not
+  # asserted here — this is a liveness probe, not a data-integrity gate.
   echo "  PASS: All endpoints publishing"
 else
   echo "  FAIL: Missing $(( TOPIC_COUNT - RECEIVED )) topics"

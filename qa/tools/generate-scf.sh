@@ -2,8 +2,8 @@
 # Generate a Connectware SCF (Service Commissioning File) from a simulator profile.
 #
 # The profile YAML is the single source of truth — port, device ID, objects, and
-# network constraints are all read from it. Constrained devices (noSegmentation,
-# small max_apdu) automatically get maxApdu/segmentation overrides in the SCF.
+# network constraints are all read from it. RPM auto-detects device capabilities,
+# so no maxApdu/segmentation overrides are emitted.
 # If endpoint count exceeds the profile's base objects, realistic domain-specific
 # objects are generated using the profile's padding template.
 #
@@ -11,34 +11,48 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"   # qa/tools -> repo root
 PYTHON="${PYTHON:-${REPO_DIR}/.venv/bin/python3}"
 
-if [[ $# -lt 2 ]]; then
+if [[ $# -lt 1 ]]; then
   cat <<'USAGE'
-Usage: ./scripts/generate-scf.sh <ip> <profile.yaml> [name] [endpoints] [poll-interval]
+Usage: ./qa/tools/generate-scf.sh <ip> --all
+       ./qa/tools/generate-scf.sh <ip> <profile.yaml> [name] [endpoints] [poll-interval]
 
   ip              Simulator IP as seen by the protocol-mapper container (e.g., 172.18.0.1)
+  --all           Generate SCFs for all profiles in profiles-cybus/
   profile.yaml    Simulator profile (in profiles-cybus/)
   name            SCF service name (default: profile filename without extension)
   endpoints       Target endpoint count (0 = all profile objects, >0 = scale with padding)
   poll-interval   How often CW polls each endpoint in ms (default: 1000)
 
-Examples:
-  ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/newlift_gateway.yaml
-  ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/newlift_gateway.yaml newlift-2000 2000
-  ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/miele_energy_meter.yaml miele-5000 5000
-  ./scripts/generate-scf.sh 192.168.1.100 profiles-cybus/modern_controller.yaml modern-1000 1000 2000
+The generator reads the profile and automatically:
+- Emits both deviceInstance + deviceAddress (schema requires both)
+- Adds an object-list endpoint for constrained devices where it tests Tier 3 fallback
 
-  # All profiles at default size
-  for f in profiles-cybus/*.yaml; do
-    ./scripts/generate-scf.sh 192.168.1.100 "$f"
-  done
+Examples:
+  ./qa/tools/generate-scf.sh 192.168.1.100 --all
+  ./qa/tools/generate-scf.sh 192.168.1.100 profiles-cybus/newlift_gateway.yaml
+  ./qa/tools/generate-scf.sh 192.168.1.100 profiles-cybus/miele_energy_meter.yaml miele-5000 5000
 USAGE
   exit 1
 fi
 
 IP="$1"
+
+# --all: generate SCFs for every profile
+if [[ "${2:-}" == "--all" ]]; then
+  for f in "${REPO_DIR}"/profiles-cybus/*.yaml; do
+    "$0" "$IP" "$f"
+  done
+  exit 0
+fi
+
+if [[ $# -lt 2 ]]; then
+  echo "ERROR: Missing profile argument. Use --all or specify a profile." >&2
+  exit 1
+fi
+
 PROFILE="$2"
 NAME="${3:-$(basename "$PROFILE" .yaml)}"
 ENDPOINTS="${4:-0}"
@@ -46,8 +60,8 @@ INTERVAL="${5:-1000}"
 
 [[ ! -f "$PROFILE" ]] && echo "ERROR: Profile not found: $PROFILE" >&2 && exit 1
 
-mkdir -p "${REPO_DIR}/scf"
-OUTPUT="${REPO_DIR}/scf/${NAME}.yml"
+mkdir -p "${REPO_DIR}/qa/scf"
+OUTPUT="${REPO_DIR}/qa/scf/${NAME}.yml"
 
 # Use the simulator's padding generator for scaling
 PYTHONPATH="${REPO_DIR}/src" "$PYTHON" - "$IP" "$PROFILE" "$NAME" "$ENDPOINTS" "$INTERVAL" << 'PYEOF' > "$OUTPUT"
@@ -144,23 +158,30 @@ if target > len(objects):
         print(f"WARNING: No padding template found, using {len(objects)} base objects",
               file=sys.stderr)
 
-# Derive SCF connection overrides
+# RPM auto-detects device capabilities — no schema overrides needed
 overrides = {}
-if segmentation == 'noSegmentation':
-    overrides['segmentation'] = 'no-segmentation'
-if max_apdu < 1476:
-    overrides['maxApdu'] = max_apdu
+
+# Slow devices need a longer apduTimeoutMs. This is the ONLY liveness knob accepted
+# by the adapter schema — apduRetries and healthTracking are no longer allowed.
+# Adapter rule: HEALTHY ⟺ matched response within apduTimeoutMs × 3.
+realism = profile.get('realism', {})
+delay_ms = realism.get('response_delay_ms', 0)
+if delay_ms >= 10000:
+    # Device responds slower than default 3000ms — set apduTimeoutMs so
+    # the × 3 health window comfortably covers the response time.
+    overrides['apduTimeoutMs'] = max(delay_ms + 3000, 15000)
 
 ABBREV = {
     'AnalogInput': 'AI', 'AnalogOutput': 'AO', 'AnalogValue': 'AV',
     'BinaryInput': 'BI', 'BinaryOutput': 'BO', 'BinaryValue': 'BV',
     'MultiStateInput': 'MI', 'MultiStateOutput': 'MO', 'MultiStateValue': 'MV',
+    'NotificationClass': 'NO',
 }
 SCF_TYPE = {
     'AnalogInput': 'analog-input', 'AnalogOutput': 'analog-output', 'AnalogValue': 'analog-value',
     'BinaryInput': 'binary-input', 'BinaryOutput': 'binary-output', 'BinaryValue': 'binary-value',
     'MultiStateInput': 'multi-state-input', 'MultiStateOutput': 'multi-state-output',
-    'MultiStateValue': 'multi-state-value',
+    'MultiStateValue': 'multi-state-value', 'NotificationClass': 'notification-class',
 }
 
 o = []
@@ -203,8 +224,19 @@ for k, v in overrides.items():
     val = "'{}'".format(v) if isinstance(v, str) else v
     o.append('        {}: {}'.format(k, val))
 
+# Object types that lack a pollable present-value property
+SKIP_TYPES = {'NotificationClass'}
+
+# Commandable types get an MQTT->BACnet write endpoint (<id>cmd/set) when
+# WRITABLE_ENDPOINTS=1, making the SCF bidirectional. Default off (read-only).
+COMMANDABLE_TYPES = {'analog-output', 'analog-value', 'binary-output',
+                     'binary-value', 'multi-state-output', 'multi-state-value'}
+WRITE_COMMANDABLE = os.environ.get('WRITABLE_ENDPOINTS') == '1'
+
 for obj in objects:
     obj_type = obj.get('object_type', obj.get('objectType', ''))
+    if obj_type in SKIP_TYPES:
+        continue
     abbr = ABBREV.get(obj_type, obj_type[:2].upper())
     scf_type = SCF_TYPE.get(obj_type, obj_type.lower())
     inst = obj.get('instance', 0)
@@ -224,8 +256,50 @@ for obj in objects:
     o.append(f'        objectType: {scf_type}')
     o.append(f'        objectInstance: {inst}')
 
+    # Commandable point also gets a write endpoint: publishing to
+    # <id>cmd/set writes present-value via BACnet WriteProperty (MQTT round-trip).
+    if WRITE_COMMANDABLE and scf_type in COMMANDABLE_TYPES:
+        o.append(f'')
+        o.append(f'  {res_id}write:')
+        o.append(f'    type: Cybus::Endpoint')
+        o.append(f'    properties:')
+        o.append(f'      protocol: Bacnet')
+        o.append(f'      connection: !ref connection')
+        o.append(f'      topic: {res_id}cmd')
+        o.append(f'      write:')
+        o.append(f'        property: present-value')
+        o.append(f'        objectType: {scf_type}')
+        o.append(f'        objectInstance: {inst}')
+
+# Auto-add object-list endpoint when response would exceed device APDU
+# NPDU ~8B + APDU header ~15B + each object-id ~5B (tag + 4B value) + framing ~4B
+estimated_objlist_size = 27 + (len(objects) + 1) * 5
+is_constrained = segmentation == 'noSegmentation' and max_apdu < 1476
+if is_constrained and estimated_objlist_size > max_apdu:
+    o.append(f'')
+    o.append(f'  objectList:')
+    o.append(f'    type: Cybus::Endpoint')
+    o.append(f'    properties:')
+    o.append(f'      protocol: Bacnet')
+    o.append(f'      connection: !ref connection')
+    o.append(f'      topic: object-list')
+    o.append(f'      subscribe:')
+    o.append(f'        priority: 12')
+    # object-list is a device-static property; 5min poll is plenty.
+    # A 10s poll on constrained devices forces indexed fallback every cycle
+    # and risks Application-Exceeded-Reply-Time aborts on overloaded devices.
+    o.append(f'        interval: 300000')
+    o.append(f'        property: object-list')
+    o.append(f'        objectType: device')
+    o.append(f'        objectInstance: {dev_id}')
+    print(f"NOTE: Added object-list endpoint (Tier 3 test: {estimated_objlist_size}B > {max_apdu}B APDU)",
+          file=sys.stderr)
+
 print('\n'.join(o))
 PYEOF
 
-EP_COUNT=$(grep -c 'Cybus::Endpoint' "$OUTPUT")
+# Never emit a silent 0-byte SCF (a redirected heredoc failure isn't caught by set -e).
+[[ -s "$OUTPUT" ]] || { echo "ERROR: generation produced an empty SCF ($OUTPUT)" >&2; rm -f "$OUTPUT"; exit 1; }
+
+EP_COUNT=$(grep -c 'Cybus::Endpoint' "$OUTPUT" || true)
 echo "Generated: $OUTPUT ($EP_COUNT endpoints)"
