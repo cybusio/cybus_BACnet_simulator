@@ -56,8 +56,7 @@ objects:
   # Core energy measurement objects — production Miele instance IDs
   # =========================================================================
   # Instance numbers match the real Miele energy meter BACnet object map
-  # so production SCFs (connection_bacnet.yaml + receive_bacnet_*.yaml)
-  # and storm tests work without modification.
+  # so production SCFs work without modification.
 
   - object_type: AnalogValue
     instance: 101009

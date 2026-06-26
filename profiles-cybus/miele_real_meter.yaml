@@ -1,0 +1,37 @@
+# =============================================================================
+# Miele real meter — faithful mirror of receive_bacnet_TotalElectricalEnergyConsumption
+# =============================================================================
+# Matches the REAL factory object model (DA_115_12 generated service): the energy
+# service reads present-value of SumRealEnergy as an ANALOG-INPUT at instance 57
+# (the enabled point); SumRealPower/SumReactivePower are also analog-input, while
+# the apparent/reactive points are analog-value. Exact types + a live electrical
+# input, so the production test exercises present-value on analog-input energy
+# values (not just live voltage) — closing the QA "analog-value-only" gap.
+# =============================================================================
+
+extends: _base.yaml
+
+simulator:
+  port: 47868
+  device_id: 2098185          # real concentrator-style device instance
+
+device:
+  vendor: MIELE
+  vendor_name: "Miele Professional"
+  model_name: "Miele-EnergyMeter"
+  protocol_revision: 22
+
+network:
+  max_apdu: 1476
+  segmentation: noSegmentation
+
+objects:
+  # Sum power/energy — real factory object types (analog-input for Real*, analog-value for Apparent/Reactive*)
+  - { object_type: AnalogInput, instance: 43, name: SumRealPower,        units: watts,                        default: 9964.3 }
+  - { object_type: AnalogInput, instance: 53, name: SumReactivePower,    units: voltAmperesReactive,          default: 2498.1 }
+  - { object_type: AnalogValue, instance: 71, name: SumApparentPower,    units: voltAmperes,                  default: 10272.1 }
+  - { object_type: AnalogInput, instance: 57, name: SumRealEnergy,       units: kilowattHours,                default: 48253.7 }  # ENABLED production point
+  - { object_type: AnalogValue, instance: 89, name: SumReactiveEnergy,   units: kilovoltAmpereHoursReactive,  default: 12096.0 }
+  - { object_type: AnalogValue, instance: 95, name: SumApparentEnergy,   units: kilovoltAmpereHours,          default: 12480.3 }
+  # Live electrical input (driven, fluctuates around nominal)
+  - { object_type: AnalogInput, instance: 1,  name: voltage_L1_N,        units: volts,                        default: 230.1 }

@@ -1,0 +1,8 @@
+extends: miele_energy_meter.yaml
+
+simulator:
+  port: 47840
+  device_id: 2000027
+
+device:
+  model_name: "miele-clone-018"
