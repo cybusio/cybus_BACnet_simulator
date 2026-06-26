@@ -23,8 +23,9 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Generated SCFs (IP-specific, not for VCS)
-scf/*.yml
+# Generated device SCFs (IP-specific, not for VCS) — except the committed fixture
+qa/scf/*.yml
+!qa/scf/zz_objectlist.yml
 
 # Runtime scratch
 .run/

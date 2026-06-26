@@ -37,6 +37,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "src/bacnet_sim/types.py" = ["A005"]
 "tests/**/*.py" = ["S101", "ANN", "PLR2004", "PLR0913", "SLF001"]
+"qa/inproc/**/*.py" = ["S101", "ANN", "PLR2004", "PLR0911", "PLR0913", "SLF001", "T201", "INP001", "S107", "BLE001", "ASYNC109"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["bacnet_sim"]
@@ -53,13 +54,18 @@ python_version = "3.12"
 strict = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "qa/inproc"]
 asyncio_mode = "auto"
+markers = [
+    "slow: long-running scenarios (sustained polling, ultra-slow device)",
+    "write: tests that write values to devices",
+]
 
 [dependency-groups]
 dev = [
     "BAC0>=22.9",
     "mypy>=1.14",
+    "paho-mqtt>=2.0",
     "pre-commit>=4.5.1",
     "pytest>=8.0",
     "pytest-asyncio>=0.25",
