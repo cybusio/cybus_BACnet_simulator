@@ -1,0 +1,753 @@
+# Hybrid COV + poll — QA acceptance SCF
+# Two BACnet connections sharing one protocol-mapper:
+#   cappedDevice  -> COV-capable device with a finite COV table -> COV+poll split
+#   drivenDevice  -> device whose values move -> ongoing COV notifications
+# Both COV-enabled: validates the split, ongoing push, and that two COV
+# connections never cross-route notifications. See README.md for pass criteria.
+description: |
+  Hybrid COV+poll acceptance test for the BACnet adapter.
+metadata:
+  name: covacceptance
+  provider: cybus
+  version: 1.0.0
+parameters:
+  cappedDeviceIp:
+    type: string
+    default: '172.18.0.1'
+  cappedDevicePort:
+    type: number
+    default: 47841
+  cappedDeviceInstance:
+    type: number
+    default: 1014007
+  drivenDeviceIp:
+    type: string
+    default: '172.18.0.1'
+  drivenDevicePort:
+    type: number
+    default: 47820
+  drivenDeviceInstance:
+    type: number
+    default: 900001
+  covLifetimeSeconds:
+    type: number
+    default: 300
+  pollIntervalMs:
+    type: number
+    default: 10000
+resources:
+  cappedDevice:
+    type: Cybus::Connection
+    properties:
+      protocol: Bacnet
+      targetState: connected
+      connection:
+        deviceInstance: !ref cappedDeviceInstance
+        deviceAddress: !sub '${cappedDeviceIp}:${cappedDevicePort}'
+        cov:
+          enabled: true
+          lifetimeSeconds: !ref covLifetimeSeconds
+  capped101000:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101000
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101000
+  capped101001:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101001
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101001
+  capped101002:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101002
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101002
+  capped101003:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101003
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101003
+  capped101004:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101004
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101004
+  capped101005:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101005
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101005
+  capped101006:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101006
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101006
+  capped101007:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101007
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101007
+  capped101008:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101008
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101008
+  capped101009:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101009
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101009
+  capped101010:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101010
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101010
+  capped101011:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101011
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101011
+  capped101012:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101012
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101012
+  capped101013:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101013
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101013
+  capped101014:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101014
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101014
+  capped101015:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101015
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101015
+  capped101016:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101016
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101016
+  capped101017:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101017
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101017
+  capped101018:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101018
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101018
+  capped101019:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101019
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101019
+  capped101020:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101020
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101020
+  capped101021:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101021
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101021
+  capped101022:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101022
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101022
+  capped101023:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101023
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101023
+  capped101024:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101024
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101024
+  capped101025:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101025
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101025
+  capped101026:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101026
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101026
+  capped101027:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101027
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101027
+  capped101028:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101028
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101028
+  capped101029:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101029
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101029
+  capped101030:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101030
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101030
+  capped101031:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101031
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101031
+  capped101032:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101032
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101032
+  capped101033:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101033
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101033
+  capped101034:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101034
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101034
+  capped101035:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101035
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101035
+  capped101036:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101036
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101036
+  capped101037:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101037
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101037
+  capped101038:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101038
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101038
+  capped101039:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101039
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101039
+  capped101040:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101040
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101040
+  capped101041:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101041
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101041
+  capped101042:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101042
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101042
+  capped101043:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101043
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101043
+  capped101044:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101044
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101044
+  capped101045:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101045
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101045
+  capped101046:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101046
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101046
+  capped101047:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101047
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101047
+  capped101048:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101048
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101048
+  capped101049:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101049
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101049
+  capped101050:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101050
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101050
+  capped101051:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101051
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101051
+  capped101052:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101052
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101052
+  capped101053:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101053
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101053
+  capped101054:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101054
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101054
+  capped101055:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101055
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101055
+  capped101056:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101056
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101056
+  capped101057:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101057
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101057
+  capped101058:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101058
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101058
+  capped101059:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref cappedDevice
+      topic: capped/AV101059
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 101059
+  drivenDevice:
+    type: Cybus::Connection
+    properties:
+      protocol: Bacnet
+      targetState: connected
+      connection:
+        deviceInstance: !ref drivenDeviceInstance
+        deviceAddress: !sub '${drivenDeviceIp}:${drivenDevicePort}'
+        cov:
+          enabled: true
+          lifetimeSeconds: !ref covLifetimeSeconds
+  driven1:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref drivenDevice
+      topic: driven/AV1
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 1
+  driven2:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref drivenDevice
+      topic: driven/AV2
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 2
+  driven3:
+    type: Cybus::Endpoint
+    properties:
+      protocol: Bacnet
+      connection: !ref drivenDevice
+      topic: driven/AV3
+      subscribe:
+        interval: !ref pollIntervalMs
+        property: present-value
+        objectType: analog-value
+        objectInstance: 3
