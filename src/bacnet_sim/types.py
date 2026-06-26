@@ -38,6 +38,20 @@ class RealismConfig:
     tsm_pool_size: int = 0
     abort_reason: int = 0
     force_abort: bool = False
+    abort_device_reads: bool = False
+    # When saturated (in_flight >= tsm_pool_size), abort the excess read with
+    # abort_reason instead of silently dropping it — models a station whose
+    # transaction buffer overflows under concurrent load (CC-3851).
+    overload_abort: bool = False
+    # Fraction of saturated reads the station drops (no reply -> client timeout)
+    # instead of aborting. Real Desigo PXC under overload does both: the CC-3851
+    # PM log is ~1:1 bufferOverflow aborts to read timeouts. 0 = abort-only.
+    overload_drop_prob: float = 0.0
+    disable_rpm: bool = False
+    drift_pct: float = 0.02  # ±fraction jitter on analog-input every 5s; 0 = static values
+    cov_subscription_limit: int = (
+        0  # max concurrent COV subscriptions; 0 = unlimited (models a real B-BC finite COV table)
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +60,25 @@ class DeviceNetConfig:
 
     max_apdu: int
     segmentation: SegmentationSupport
+
+
+@dataclass(frozen=True, slots=True)
+class DriveSpec:
+    """Periodic value driver for an object's present-value.
+
+    Three shapes supported:
+        sawtooth: linear ramp from `low` to `high` and snap back.
+        sine:     sinusoidal between `low` and `high`.
+        toggle:   binary flip every `period_ms` (Analog/Binary/MultiState).
+
+    `step` is the per-tick increment for analog shapes; ignored for toggle.
+    """
+
+    shape: str
+    period_ms: int = 500
+    low: float = 0.0
+    high: float = 100.0
+    step: float = 1.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +91,11 @@ class ObjectDefinition:
     units: str | None = None
     default: float | int | bool | str | None = None
     states: tuple[str, ...] | None = None
+    # COV: minimum present-value delta that triggers a COV notification (analog only).
+    cov_increment: float | None = None
+    # Optional value driver for COV testing; bacpypes3 fires notifications
+    # when presentValue crosses cov_increment from the last reported value.
+    drive: DriveSpec | None = None
 
 
 @dataclass(frozen=True, slots=True)

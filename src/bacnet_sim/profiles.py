@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 from bacnet_sim.types import DeviceNetConfig
 from bacnet_sim.types import DeviceProfile
+from bacnet_sim.types import DriveSpec
 from bacnet_sim.types import ObjectDefinition
 from bacnet_sim.types import RealismConfig
 from bacnet_sim.types import SegmentationSupport
@@ -28,6 +29,29 @@ _RESERVED_FILES: frozenset[str] = frozenset({"_base.yaml", "vendors.yaml"})
 
 class ProfileValidationError(Exception):
     """Raised when a device profile fails validation."""
+
+
+_VALID_DRIVE_SHAPES: frozenset[str] = frozenset({"sawtooth", "sine", "toggle"})
+
+
+def _parse_drive(raw: dict[str, Any] | None) -> DriveSpec | None:
+    """Parse the optional `drive:` block on an object definition.
+
+    Returns None when unset. Validates shape against known patterns.
+    """
+    if not raw:
+        return None
+    shape = str(raw.get("shape", "sawtooth")).lower()
+    if shape not in _VALID_DRIVE_SHAPES:
+        msg = f"unknown drive.shape: {shape!r}"
+        raise ProfileValidationError(msg)
+    return DriveSpec(
+        shape=shape,
+        period_ms=int(raw.get("period_ms", 500)),
+        low=float(raw.get("low", 0.0)),
+        high=float(raw.get("high", 100.0)),
+        step=float(raw.get("step", 1.0)),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +96,24 @@ def _gen_padding(
                 inst += 1
             counter += 1
     return tuple(objs[:count])
+
+
+def _state_padding(spec: dict[str, Any] | None) -> tuple[ObjectDefinition, ...]:
+    """One Multi-state Value with `count` states — a large state-text array."""
+    if not spec:
+        return ()
+    count = int(spec.get("count", 0))
+    if count <= 0:
+        return ()
+    return (
+        ObjectDefinition(
+            object_type="MultiStateValue",
+            instance=int(spec.get("instance", 1)),
+            name=str(spec.get("name", "bigarray-states")),
+            states=tuple(f"s{i}" for i in range(1, count + 1)),
+            default=1,
+        ),
+    )
 
 
 # --- Harmonics first-phase for energy_meter (structurally unique) ---
@@ -211,7 +253,6 @@ _TEMPLATES: dict[str, tuple[str, tuple[_Phase, ...]]] = {
         ),
     ),
 }
-
 
 
 def _generate_padding(
@@ -382,6 +423,14 @@ class ProfileLoader:
                 tsm_pool_size=int(realism_raw.get("tsm_pool_size", 0)),
                 abort_reason=int(realism_raw.get("abort_reason", 0)),
                 force_abort=bool(realism_raw.get("force_abort", False)),
+                abort_device_reads=bool(
+                    realism_raw.get("abort_device_reads", False),
+                ),
+                overload_abort=bool(realism_raw.get("overload_abort", False)),
+                overload_drop_prob=float(realism_raw.get("overload_drop_prob", 0.0)),
+                disable_rpm=bool(realism_raw.get("disable_rpm", False)),
+                drift_pct=float(realism_raw.get("drift_pct", 0.02)),
+                cov_subscription_limit=int(realism_raw.get("cov_subscription_limit", 0)),
             ),
             objects=self._build_objects(data, objects_raw),
             simulator_port=int(sim_raw["port"]) if "port" in sim_raw else None,
@@ -401,9 +450,14 @@ class ProfileLoader:
                 units=o.get("units"),
                 default=o.get("default"),
                 states=tuple(o["states"]) if o.get("states") else None,
+                cov_increment=(
+                    float(o["cov_increment"]) if o.get("cov_increment") is not None else None
+                ),
+                drive=_parse_drive(o.get("drive")),
             )
             for o in objects_raw
         )
+        explicit += _state_padding(data.get("state_padding"))
         padding_raw = data.get("object_padding")
         if not padding_raw:
             return explicit

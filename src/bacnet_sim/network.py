@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import random
 import re
 import weakref
@@ -17,24 +18,41 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from bacpypes3.apdu import AbortReason
+from bacpypes3.apdu import APCISequence
+from bacpypes3.apdu import ComplexAckPDU
 from bacpypes3.apdu import ReadPropertyACK
+from bacpypes3.apdu import ReadRangeACK
 from bacpypes3.appservice import ServerSSM
+from bacpypes3.basetypes import EventTransitionBits
+from bacpypes3.basetypes import ResultFlags
 from bacpypes3.errors import AbortException
 from bacpypes3.errors import ExecutionError
 from bacpypes3.errors import PropertyError
+from bacpypes3.errors import UnrecognizedService
 from bacpypes3.ipv4.app import NormalApplication
+from bacpypes3.local.analog import AnalogInputObject as LocalAnalogInputObject
+from bacpypes3.local.analog import AnalogOutputObject as LocalAnalogOutputObject
+from bacpypes3.local.analog import AnalogValueObject as LocalAnalogValueObject
+from bacpypes3.local.binary import BinaryInputObject as LocalBinaryInputObject
+from bacpypes3.local.binary import BinaryOutputObject as LocalBinaryOutputObject
+from bacpypes3.local.binary import BinaryValueObject as LocalBinaryValueObject
+from bacpypes3.local.device import DeviceObject
+from bacpypes3.local.multistate import MultiStateInputObject as LocalMultiStateInputObject
+from bacpypes3.local.multistate import MultiStateOutputObject as LocalMultiStateOutputObject
+from bacpypes3.local.multistate import MultiStateValueObject as LocalMultiStateValueObject
 from bacpypes3.object import AnalogInputObject
 from bacpypes3.object import AnalogOutputObject
 from bacpypes3.object import AnalogValueObject
 from bacpypes3.object import BinaryInputObject
 from bacpypes3.object import BinaryOutputObject
 from bacpypes3.object import BinaryValueObject
-from bacpypes3.object import DeviceObject
 from bacpypes3.object import MultiStateInputObject
 from bacpypes3.object import MultiStateOutputObject
 from bacpypes3.object import MultiStateValueObject
 from bacpypes3.object import NotificationClassObject
 from bacpypes3.pdu import IPv4Address
+
+from bacnet_sim.cov import DriverRegistry
 
 if TYPE_CHECKING:
     from bacnet_sim.devices import DeviceManager
@@ -44,6 +62,15 @@ if TYPE_CHECKING:
     from bacnet_sim.types import RealismConfig
 
 logger = logging.getLogger(__name__)
+
+# Test-only network-loss hook. Default 0.0 (disabled). Set BACNET_PACKET_DROP_PROB
+# to a float in (0, 1] to drop that fraction of incoming APDUs before any device
+# processing. Used by Phase 6 soak tests; must be 0.0 for all normal runs.
+_PACKET_DROP_PROB = max(
+    0.0, min(1.0, float(os.environ.get("BACNET_PACKET_DROP_PROB", "0") or "0"))
+)
+if _PACKET_DROP_PROB > 0:
+    logger.warning("BACNET_PACKET_DROP_PROB=%.2f — dropping incoming APDUs", _PACKET_DROP_PROB)
 
 # ---------------------------------------------------------------------------
 # Object type mapping
@@ -61,6 +88,26 @@ _BP3_OBJECT_CLASS: dict[str, type] = {
     "MultiStateValue": MultiStateValueObject,
     "NotificationClass": NotificationClassObject,
 }
+
+# COV-capable variants from bacpypes3.local.*. Used only when a profile opts in
+# (cov_increment or drive set) to avoid disrupting existing profiles that rely
+# on the simpler bacpypes3.object.* classes.
+_BP3_LOCAL_OBJECT_CLASS: dict[str, type] = {
+    "AnalogInput": LocalAnalogInputObject,
+    "AnalogOutput": LocalAnalogOutputObject,
+    "AnalogValue": LocalAnalogValueObject,
+    "BinaryInput": LocalBinaryInputObject,
+    "BinaryOutput": LocalBinaryOutputObject,
+    "BinaryValue": LocalBinaryValueObject,
+    "MultiStateInput": LocalMultiStateInputObject,
+    "MultiStateOutput": LocalMultiStateOutputObject,
+    "MultiStateValue": LocalMultiStateValueObject,
+}
+
+
+def _object_uses_cov(defn: ObjectDefinition) -> bool:
+    """A definition opts into COV when cov_increment or drive is configured."""
+    return defn.cov_increment is not None or defn.drive is not None
 
 
 def _type_id(name: str) -> str:
@@ -80,31 +127,62 @@ def _type_id(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _analog_kwargs(defn: ObjectDefinition) -> dict[str, Any]:
+    kw: dict[str, Any] = {}
+    if defn.default is not None:
+        kw["presentValue"] = float(defn.default)
+    if defn.units:
+        kw["units"] = defn.units
+    if defn.cov_increment is not None:
+        kw["covIncrement"] = float(defn.cov_increment)
+    return kw
+
+
+def _binary_kwargs(defn: ObjectDefinition) -> dict[str, Any]:
+    kw: dict[str, Any] = {}
+    if defn.default is not None:
+        kw["presentValue"] = "active" if defn.default else "inactive"
+    return kw
+
+
+def _multistate_kwargs(defn: ObjectDefinition) -> dict[str, Any]:
+    kw: dict[str, Any] = {}
+    if defn.default is not None:
+        kw["presentValue"] = int(defn.default)
+    if defn.states:
+        kw["numberOfStates"] = len(defn.states)
+        kw["stateText"] = list(defn.states)
+    return kw
+
+
 def _extra_kwargs(defn: ObjectDefinition) -> dict[str, Any]:
     """Return type-family-specific kwargs for a bacpypes3 object."""
-    kw: dict[str, Any] = {}
+    kw: dict[str, Any]
     if defn.object_type.startswith("Analog"):
-        if defn.default is not None:
-            kw["presentValue"] = float(defn.default)
-        if defn.units:
-            kw["units"] = defn.units
+        kw = _analog_kwargs(defn)
     elif defn.object_type.startswith("Binary"):
-        if defn.default is not None:
-            kw["presentValue"] = "active" if defn.default else "inactive"
+        kw = _binary_kwargs(defn)
     elif defn.object_type.startswith("MultiState"):
-        if defn.default is not None:
-            kw["presentValue"] = int(defn.default)
-        if defn.states:
-            kw["numberOfStates"] = len(defn.states)
-            kw["stateText"] = list(defn.states)
+        kw = _multistate_kwargs(defn)
+    else:
+        kw = {}
     if defn.object_type.endswith(("Input", "Output")):
         kw["outOfService"] = False
     return kw
 
 
 def _build_bp3_object(defn: ObjectDefinition) -> Any:  # noqa: ANN401
-    """Create a bacpypes3 object from our ObjectDefinition."""
-    bp3_cls = _BP3_OBJECT_CLASS.get(defn.object_type)
+    """Create a bacpypes3 object from our ObjectDefinition.
+
+    Switches to bacpypes3.local.* variants when the object opts into COV
+    (cov_increment or drive set). Local classes register a `_cov_criteria`
+    detection algorithm that fires notifications via the parent app's
+    ChangeOfValueServices mixin.
+    """
+    if _object_uses_cov(defn) and defn.object_type in _BP3_LOCAL_OBJECT_CLASS:
+        bp3_cls: type | None = _BP3_LOCAL_OBJECT_CLASS[defn.object_type]
+    else:
+        bp3_cls = _BP3_OBJECT_CLASS.get(defn.object_type)
     if bp3_cls is None:
         logger.warning(
             "Skipping unknown object type %r (instance %d)", defn.object_type, defn.instance
@@ -116,6 +194,12 @@ def _build_bp3_object(defn: ObjectDefinition) -> Any:  # noqa: ANN401
         "objectName": defn.name,
         **_extra_kwargs(defn),
     }
+    # NC required properties — bacpypes3 leaves them None otherwise
+    if defn.object_type == "NotificationClass":
+        kwargs["notificationClass"] = defn.instance
+        kwargs["priority"] = [64, 64, 64]
+        kwargs["ackRequired"] = EventTransitionBits([1, 1, 1])
+        kwargs["recipientList"] = []
     return bp3_cls(**kwargs)
 
 
@@ -217,6 +301,11 @@ class SlowApplication(NormalApplication):  # type: ignore[misc]
         #   oversized responses abort via SSM with the configured abort_reason code
         self._force_abort = realism.force_abort
         self._abort_exc = _make_abort_exception(realism.abort_reason)
+        self._disable_rpm = realism.disable_rpm
+        self._overload_abort = realism.overload_abort
+        self._overload_drop_prob = realism.overload_drop_prob
+        self._cov_limit = realism.cov_subscription_limit
+        self._cov_active = 0
 
     async def do_ReadPropertyRequest(self, apdu: Any) -> None:  # noqa: ANN401, N802
         """Abort when force-abort is on, or when encoded response exceeds max_apdu.
@@ -229,7 +318,31 @@ class SlowApplication(NormalApplication):  # type: ignore[misc]
         oid = apdu.objectIdentifier
         prop = apdu.propertyIdentifier
         src = apdu.pduSource
-        if self._force_abort and str(oid[0]) != "device":
+        # Overload abort: when saturated, the station's transaction buffer
+        # overflows and it ABORTs the excess read (CC-3851). Device reads (the
+        # liveness probe) are spared so the connection stays "connected" and
+        # keeps polling — which is what drives the client's invoke-id pressure.
+        if (
+            self._overload_abort
+            and self._tsm_limit > 0
+            and self._in_flight > self._tsm_limit
+            and str(oid[0]) != "device"
+        ):
+            logger.debug(
+                "RP %s/%s from %s -> overload abort(%d)",
+                oid,
+                prop,
+                src,
+                self._realism.abort_reason,
+            )
+            raise self._abort_exc()
+        # force_abort aborts non-device reads; abort_device_reads extends it to
+        # the device object too (e.g. object-name liveness probe) so the client's
+        # probe error-classification can be exercised.
+        abort_this = self._force_abort and (
+            self._realism.abort_device_reads or str(oid[0]) != "device"
+        )
+        if abort_this:
             reason = self._realism.abort_reason
             logger.debug("RP %s/%s from %s -> abort(%d)", oid, prop, src, reason)
             raise self._abort_exc()
@@ -285,17 +398,125 @@ class SlowApplication(NormalApplication):  # type: ignore[misc]
         )
         await self.response(resp)
 
+    async def do_ReadRangeRequest(self, apdu: Any) -> None:  # noqa: ANN401, N802
+        """ReadRange By Position over a list/array property (bacpypes3 stubs this).
+
+        Returns a window of the property capped to the device APDU, with
+        firstItem/lastItem/moreItems flags so the client reads the rest in chunks.
+        """
+        obj = self.get_object_id(apdu.objectIdentifier)
+        if not obj:
+            raise ExecutionError(errorClass="object", errorCode="unknownObject")
+        value = await obj.read_property(apdu.propertyIdentifier, None)
+        if value is None:
+            raise PropertyError(errorCode="unknownProperty")
+        try:
+            elements = list(value)
+        except TypeError as exc:
+            raise ExecutionError(errorClass="property", errorCode="datatypeNotSupported") from exc
+        total = len(elements)
+        ref_index, count = 1, total
+        rng = apdu.range
+        by_pos = getattr(rng, "byPosition", None) if rng is not None else None
+        if by_pos is not None:
+            ref_index = int(by_pos.referenceIndex)
+            count = int(by_pos.count)
+        start = max(ref_index - 1, 0)
+        avail = max(total - start, 0)
+        cap = max(1, self.device_object.maxApduLengthAccepted // 8)
+        take = min(count if count > 0 else avail, avail, cap)
+        sliced = elements[start : start + take]
+        last_item = (start + take) >= total
+        resp = ReadRangeACK(
+            objectIdentifier=apdu.objectIdentifier,
+            propertyIdentifier=apdu.propertyIdentifier,
+            resultFlags=ResultFlags(
+                [1 if start == 0 else 0, 1 if last_item else 0, 0 if last_item else 1]
+            ),
+            itemCount=len(sliced),
+            itemData=type(value)(sliced),
+            context=apdu,
+        )
+        logger.debug(
+            "RR %s/%s from %s -> %d items (start=%d more=%s)",
+            apdu.objectIdentifier,
+            apdu.propertyIdentifier,
+            apdu.pduSource,
+            len(sliced),
+            start,
+            not last_item,
+        )
+        await self.response(resp)
+
     async def do_ReadPropertyMultipleRequest(self, apdu: Any) -> None:  # noqa: ANN401, N802
-        """Always abort RPM when force-abort is on."""
+        """Reject RPM when disabled; abort when force-abort is on."""
         src = apdu.pduSource
+        if self._disable_rpm:
+            logger.debug("RPM from %s -> reject(unrecognizedService)", src)
+            raise UnrecognizedService
         if self._force_abort:
             logger.debug("RPM from %s -> abort(%d)", src, self._realism.abort_reason)
             raise self._abort_exc()
         logger.debug("RPM from %s -> ok", src)
         await super().do_ReadPropertyMultipleRequest(apdu)
 
+    async def do_SubscribeCOVRequest(self, apdu: Any) -> None:  # noqa: ANN401, N802
+        """Finite COV subscription table (models a real B-BC like the PXC).
+
+        Beyond cov_subscription_limit, reject so the client must fall back to
+        polling for the excess points -- the realistic at-scale behaviour.
+        """
+        is_cancel = getattr(apdu, "lifetime", None) in (None, 0)
+        if not is_cancel and self._cov_limit and self._cov_active >= self._cov_limit:
+            logger.debug(
+                "SubscribeCOV from %s -> COV table full (%d)", apdu.pduSource, self._cov_limit
+            )
+            raise ExecutionError(errorClass="services", errorCode="cov-subscription-failed")
+        await super().do_SubscribeCOVRequest(apdu)
+        self._cov_active = max(0, self._cov_active - 1) if is_cancel else self._cov_active + 1
+
+    async def response(self, apdu: Any) -> None:  # noqa: ANN401
+        """Abort ComplexAck responses that exceed the device's max APDU.
+
+        Catches all outgoing ComplexAck PDUs (RPM, RP, ReadRange, etc.) and
+        aborts if the encoded size would exceed maxApduLengthAccepted. This
+        matches real embedded device behavior where the firmware checks response
+        size before transmitting.
+        """
+        if (
+            self._realism.abort_reason != 0
+            and isinstance(apdu, APCISequence)
+            and isinstance(apdu, ComplexAckPDU)
+        ):
+            encoded = apdu.encode()
+            apdu_size = len(encoded.pduData) if encoded.pduData else 0
+            max_apdu = self.device_object.maxApduLengthAccepted
+            if apdu_size > max_apdu:
+                logger.debug(
+                    "Response %s -> abort(%d), %dB > max_apdu %d",
+                    type(apdu).__name__,
+                    self._realism.abort_reason,
+                    apdu_size,
+                    max_apdu,
+                )
+                raise self._abort_exc()
+        await super().response(apdu)
+
     async def do_WritePropertyRequest(self, apdu: Any) -> None:  # noqa: ANN401, N802
-        """Log and forward WriteProperty."""
+        """Abort writes under force_abort; otherwise log and forward.
+
+        Mirrors the pcap's write ABORTs.
+        """
+        if self._force_abort:
+            reason = self._realism.abort_reason
+            logger.debug(
+                "WP %s/%s from %s -> abort(%d)",
+                apdu.objectIdentifier,
+                apdu.propertyIdentifier,
+                apdu.pduSource,
+                reason,
+            )
+            raise self._abort_exc()
         logger.debug(
             "WP %s/%s from %s -> ok",
             apdu.objectIdentifier,
@@ -306,14 +527,37 @@ class SlowApplication(NormalApplication):  # type: ignore[misc]
 
     async def indication(self, apdu: Any) -> None:  # noqa: ANN401
         """Process incoming APDU with simulated hardware constraints."""
+        # Simulated link-layer loss — drop before any device processing
+        if _PACKET_DROP_PROB > 0 and random.random() < _PACKET_DROP_PROB:  # noqa: S311
+            logger.debug("Lossy net: dropping incoming APDU from %s", apdu.pduSource)
+            return
+
         # Force-abort bypasses delay — real devices abort immediately
         if self._force_abort:
             await super().indication(apdu)
             return
 
-        # TSM pool exhaustion — silently drop
+        # TSM pool exhaustion. Without overload_abort: silently drop (timeout).
+        # With overload_abort: emit a bufferOverflow ABORT for the excess read —
+        # counted in-flight so the handler sees saturation (in_flight > limit),
+        # but no delay and it never occupies a serving slot, so the pool still
+        # serves its quota of real reads.
         if self._tsm_limit > 0 and self._in_flight >= self._tsm_limit:
-            logger.debug("TSM pool full (%d/%d), dropping", self._in_flight, self._tsm_limit)
+            if not self._overload_abort:
+                logger.debug("TSM pool full (%d/%d), dropping", self._in_flight, self._tsm_limit)
+                return
+            # Real station under overload does both: drop a fraction (-> client
+            # timeout), abort the rest with bufferOverflow.
+            if self._overload_drop_prob > 0 and random.random() < self._overload_drop_prob:  # noqa: S311
+                logger.debug(
+                    "TSM pool full (%d/%d), overload drop", self._in_flight, self._tsm_limit
+                )
+                return
+            self._in_flight += 1
+            try:
+                await super().indication(apdu)
+            finally:
+                self._in_flight -= 1
             return
 
         self._in_flight += 1
@@ -336,7 +580,7 @@ class SlowApplication(NormalApplication):  # type: ignore[misc]
 class DeviceApp:
     """Wraps a bacpypes3 NormalApplication for one virtual device."""
 
-    __slots__ = ("_drift_task", "app", "device_id", "port")
+    __slots__ = ("_drift_pct", "_drift_task", "_driver_registry", "app", "device_id", "port")
 
     def __init__(
         self,
@@ -353,11 +597,16 @@ class DeviceApp:
             _abort_reasons[self.app.asap] = realism.abort_reason
         self.device_id = device.device_id
         self.port = port
+        self._drift_pct = realism.drift_pct
 
+        self._driver_registry = DriverRegistry()
         for obj_def in device.profile.objects:
             bp3_obj = _build_bp3_object(obj_def)
-            if bp3_obj is not None:
-                self.app.add_object(bp3_obj)
+            if bp3_obj is None:
+                continue
+            self.app.add_object(bp3_obj)
+            if obj_def.drive is not None:
+                self._driver_registry.add(bp3_obj, obj_def.drive)
 
         obj_list = [obj.objectIdentifier for obj in self.app.iter_objects()]
         dev_obj.objectList = obj_list
@@ -373,7 +622,12 @@ class DeviceApp:
         )
 
     def start_drift(self) -> None:
-        """Start ±2% value drift on AnalogInput objects every 5s."""
+        """Start value drift on AnalogInput objects every 5s.
+
+        realism.drift_pct default ±2%; 0 = static values (e.g. for data-integrity
+        verification). Also starts any profile-configured COV value drivers via
+        DriverRegistry.
+        """
         targets: list[tuple[Any, float]] = []
         for obj in self.app.iter_objects():
             oid = obj.objectIdentifier
@@ -384,20 +638,24 @@ class DeviceApp:
                     continue
                 if val != 0:
                     targets.append((obj, val))
-        if targets:
+        if targets and self._drift_pct > 0:
             self._drift_task = asyncio.create_task(self._drift_loop(targets))
+        self._driver_registry.start()
 
     async def _drift_loop(self, targets: list[tuple[Any, float]]) -> None:
         """Background loop: nudge analog inputs around their baseline."""
         while True:
             await asyncio.sleep(5)
             for obj, base in targets:
-                obj.presentValue = round(base * (1 + random.uniform(-0.02, 0.02)), 2)  # noqa: S311
+                # jitter is cosmetic telemetry noise, not a security primitive
+                jitter = random.uniform(-self._drift_pct, self._drift_pct)  # noqa: S311
+                obj.presentValue = round(base * (1 + jitter), 2)
 
     def close(self) -> None:
         """Shut down the bacpypes3 application."""
         if self._drift_task:
             self._drift_task.cancel()
+        self._driver_registry.stop()
         _abort_reasons.pop(self.app.asap, None)
         self.app.close()
 
