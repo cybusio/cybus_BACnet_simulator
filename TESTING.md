@@ -253,8 +253,12 @@ SOAK_MIN=30 bash qa/e2e/rw-soak-e2e.sh            # quick smoke: SOAK_MIN=2 ROUN
 Each round writes fresh random REAL/UINT/BOOL to all writable points, reads back,
 asserts an **exact round-trip**; DEGRADED on any mismatch / `tsm>0` / write-error>0.
 
-✓ Pass: each ends with `RESULT: PASS`. (Prints `RESULT: FAIL`, exits non-zero, on
-any value mismatch, stuck transaction, or write error.)
+✓ Pass: each ends with `RESULT: PASS` **and** the printed per-checkpoint `mem` holds
+flat — final ≈ the T0 figure, no monotonic climb across the window. (Prints `RESULT:
+FAIL`, exits non-zero, on any value mismatch, stuck transaction, or write error.) The
+`SOAK_MIN=5` / `SOAK_MIN=2` quick modes are a **smoke pre-check only** — a
+production-tier sign-off needs the full `SOAK_MIN=30` runs, since a leak or slow drift
+only surfaces over the full window.
 
 ✗ If `RESULT: FAIL`: the per-checkpoint lines show which device/value diverged.
 Capture them + the adapter log + the final `mem` figure, and file a defect.
@@ -323,13 +327,15 @@ the **R1** log decoder.
 [ ] Step 2  simulator fleet up
 [ ] Step 3  qa-trio → exit 0, core 4 suites pass (extended SKIP)
 [ ] Step 4  every e2e script → "RESULT: N passed, 0 failed", log clean (§2)
-[ ] Step 5  scale-soak AND rw-soak → "RESULT: PASS", zero level-50/60 in the log
+[ ] Step 5  scale-soak AND rw-soak → "RESULT: PASS", printed mem flat, zero level-50/60 in the log
 [ ] §3      all 9 FV cases (FV-001…009) pass (or WAI-documented)
 [ ] Overall every adapter log line seen is a known R1 line; no error/fatal
 ```
 
-For a **production-validated** sign-off, also run **Part 2** P1→P6 green. If any
-check fails, file a defect with reproduction steps and expected-vs-actual.
+For a **production-validated** sign-off, also run **Part 2** P1→P6 green — with
+**P5/P6 at the full `SOAK_MIN=30`** (the quick modes are a smoke pre-check, not
+sufficient for sign-off). If any check fails, file a defect with reproduction steps
+and expected-vs-actual.
 
 ---
 
@@ -370,8 +376,8 @@ PROFILES), the **integrity oracle**, and the production feature it breaks.
 | **P3 — ABORT/REJECT classification** (no storm) | `abort-recovery-e2e.sh` + qa-trio `caveat-boundaries-test.js` | array on recoverable size-codes → recovers; scalar surfaces `abortReason` and **stays connected**; non-recovered abort raises no storm; unknown object **must NOT flow**. **Reveals misclassifying alive-but-limited as connection loss.** |
 | **P4 — Lifecycle / idle silent-drop / reconnect** (CI-untested) | `lifecycle-e2e.sh` + qa-trio `reconnect-test.js`; qa-trio `cadence-test.js` | **`docker stop` the peer with no reads in flight** → idle health-probe detects silent drop → `reconnecting` → `docker start` → recovers → live read post-recovery → clean disconnect; cadence: first-poll jitter, polling **STOPS after disconnect (0 orphan polls)**. **Reveals the idle health-check path + timer leak.** |
 | **P5 — Write integrity** (exact round-trip, 30 min) | `rw-soak-e2e.sh` | fresh random REAL/UINT/BOOL each round, exact round-trip; DEGRADED on any mismatch / `tsm>0` / write-error>0. **Reveals forced-tag, multi-value, payload-shaping, silent write-drop bugs.** |
-| **P6 — Scale + soak** (no leak, 30 min) | `scale-soak-e2e.sh`; `soak_monitor.py`; qa-trio `scale-integrity-test.js` | **EXACT value-match** every receive, re-verify all devices every 5 min; mem flat; fingerprinted, **ZERO mismatch**, p99<1500ms; **legacy IID silent = FAIL**. **Reveals corruption-under-load, leak, TSM exhaustion, cross-talk.** |
-| **P7 — Constrained-device adaptivity & isolation** | `isolation-e2e.sh` + qa-trio `factory-storm-test.js` | slow/wedged peer doesn't starve healthy reads (≥45/50); **500-burst ≥250 ok, no OOM**; constrained-APDU scalars fit without needless indexed reads. **Reveals APDU adaptivity, bounded queue, slow-peer isolation.** |
+| **P6 — Scale + soak** (no leak, 30 min) | `scale-soak-e2e.sh`; `soak_monitor.py`; qa-trio `scale-integrity-test.js` | **EXACT value-match** every receive, re-verify all devices every 5 min; the printed `mem` holds flat (final ≈ T0, no climb) with `abort/tsm/storm/crash = 0` at every `[+Nm]` checkpoint; fingerprinted, **ZERO mismatch**; **legacy IID silent = FAIL** (p99 latency is a separate oracle — see P7/Step 3). **Reveals corruption-under-load, leak, TSM exhaustion, cross-talk.** |
+| **P7 — Constrained-device adaptivity & isolation** | `isolation-e2e.sh` + `cadence-e2e.sh` (numeric slow-peer oracle lives in Step 3 qa-trio `factory-storm-test.js`) | isolation: healthy peer keeps full MQTT cadence despite slow+bogus neighbours (script-asserted, green `RESULT`); cadence: first polls jitter-spread, steady ~1 msg/interval, PM RSS flat (<25 MiB) — all printed (`spread=… min msgs/topic=… mem …→…`). The numeric isolation oracle (`modern ≥45/50 ok, p99<2000ms`) is asserted **and printed** by `factory-storm-test.js` in **Step 3**, not by these e2e. Constrained-APDU scalars fit without needless indexed reads. **Reveals APDU adaptivity, bounded queue, slow-peer isolation.** |
 | **P8 — Cert / production realism** (real-SCF) | `miele-spectrum-e2e.sh`; qa-trio `weatherstation-test.js` | classifies FLOW/GRACEFUL/DEGRADED/FAIL: FLOW needs `/combined` with exact engineering units; missing one point yields **actionable errors** (`not present on device`) with no faked data, other points keep flowing. **Reveals describeBacnetError + graceful-missing-point + mapping correctness.** |
 
 ## §6 — Turnkey run order (this ordered sequence IS the full suite)
@@ -428,7 +434,7 @@ qa/e2e/isolation-e2e.sh ; qa/e2e/cadence-e2e.sh         # expect: ==> RESULT: N 
 
 # P8 — cert / production realism
 docker compose -f compose/weatherstation.compose.yaml up -d
-qa/e2e/miele-spectrum-e2e.sh                             # expect: every profile FLOW or GRACEFUL, no FAIL
+qa/e2e/miele-spectrum-e2e.sh                             # expect: 8 FLOW (modern newlift legacy miele energy abort_seg no_rpm ultra_slow) + empty GRACEFUL, 0 FAIL — judged by the printed per-profile verdict lines (there is no RESULT: counter)
 
 qa/tools/cw-clean-all.sh                                    # teardown
 ```
