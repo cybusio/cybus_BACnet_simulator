@@ -77,6 +77,7 @@ pm_health() { # since <secs> -> "abort tsm storm crash"
   echo "$(grep -ciE 'Buffer Overflow' <<<"$log") $(grep -ciE 'max concurrency|encode failed' <<<"$log") $(grep -ciE 'reconnect|connectlost' <<<"$log") $(grep -ciE 'unhandledrejection|uncaught|fatal' <<<"$log")"
 }
 pm_mem() { docker stats --no-stream --format '{{.MemUsage}}' "$PM" 2>/dev/null | awk '{print $1}'; }
+pm_mem_n() { pm_mem | awk '{m=$1; if(m ~ /GiB/){gsub(/GiB/,"",m); print m*1024} else {gsub(/MiB/,"",m); print m+0}}'; }
 
 cleanup() {
   [[ -n "${_CLEANED:-}" ]] && return; _CLEANED=1   # idempotent: trap + explicit call must not overlap
@@ -95,21 +96,37 @@ read -r p t <<<"$(integrity_pass)"
 echo "T0 INTEGRITY: $p/$t receives exact-match"
 if [[ "$p" != "$t" ]]; then echo "T0 not clean — aborting soak"; cleanup; exit 1; fi
 
-echo "==> SOAK ${SOAK_MIN} min — re-verify all $t every 5 min + PM health (mem now: $(pm_mem))"
+MEM0=$(pm_mem_n)
+echo "==> SOAK ${SOAK_MIN} min — re-verify all $t every 5 min + PM health (mem now: ${MEM0} MiB)"
 # Round UP so any SOAK_MIN>0 runs at least one checkpoint — a 30-min soak must
 # never silently collapse to a single T0 sample and still print PASS.
 checks=$(( (SOAK_MIN + 4) / 5 ))
 if [[ "$SOAK_MIN" -gt 0 && "$checks" -lt 1 ]]; then echo "RESULT: FAIL (SOAK_MIN=$SOAK_MIN yields 0 checkpoints)"; exit 1; fi
-fail=0
+fail=0; MEM_BASE=""; MEM_LAST=""
 for k in $(seq 1 "$checks"); do
   sleep 300
   read -r p t <<<"$(integrity_pass)"
   read -r ab tsm st cr <<<"$(pm_health 320)"
-  mem=$(pm_mem)
+  mem=$(pm_mem); memn=$(awk -v m="$mem" 'BEGIN{if(m~/GiB/){sub(/GiB/,"",m);print m*1024}else if(m~/MiB/){sub(/MiB/,"",m);print m+0}else{print ""}}')
+  [[ -n "$memn" ]] && { [[ -z "$MEM_BASE" ]] && MEM_BASE=$memn; MEM_LAST=$memn; }   # baseline = first VALID checkpoint (post warm-up); empty = a stats hiccup, skipped
   ok="OK"; { [[ "$p" != "$t" ]] || [[ "$tsm" -gt 0 ]] || [[ "$cr" -gt 0 ]]; } && { ok="DEGRADED"; fail=1; }
   echo "  [+$(( k * 5 ))m] integrity $p/$t | abort $ab tsm $tsm storm $st crash $cr | mem $mem | $ok"
 done
 
-echo "==> SOAK DONE — final integrity: $(integrity_pass | awk '{print $1"/"$2}'), mem $(pm_mem)"
+MEMF=$(pm_mem_n)
+echo "==> SOAK DONE — final integrity: $(integrity_pass | awk '{print $1"/"$2}'), mem ${MEMF} MiB"
+# Leak check — the integrity gate above is memory-blind. Measure STEADY-STATE growth from the
+# first checkpoint (after the one-time deploy warm-up) to the last, so the ramp isn't counted
+# as a leak. Judge only when the steady window is real (>=15 min); shorter runs are informational.
+MEM_WARN_RATE=${MEM_WARN_RATE:-15}; MEM_FAIL_RATE=${MEM_FAIL_RATE:-50}   # MiB/hour (50/h ~ 1.2 GiB/day)
+win=$(( (checks - 1) * 5 ))   # minutes spanned between the first and last checkpoint
+if [[ "$win" -ge 15 && "$MEM_BASE" =~ ^[0-9.]+$ && "$MEM_LAST" =~ ^[0-9.]+$ ]]; then
+  rate=$(awk "BEGIN{printf \"%.1f\", ($MEM_LAST-$MEM_BASE)/($win/60)}")
+  echo "==> MEM TREND (steady-state, post-ramp): ${MEM_BASE} -> ${MEM_LAST} MiB over ${win}m = ${rate} MiB/hour (warn>${MEM_WARN_RATE}, fail>${MEM_FAIL_RATE})"
+  awk "BEGIN{exit !($rate > $MEM_FAIL_RATE)}" && { echo "MEM LEAK: ${rate} MiB/hour exceeds ${MEM_FAIL_RATE}"; fail=1; }
+  awk "BEGIN{exit !($rate > $MEM_WARN_RATE && $rate <= $MEM_FAIL_RATE)}" && echo "MEM WARN: ${rate} MiB/hour — confirm it plateaus over a longer soak before sign-off"
+else
+  echo "==> MEM TREND: T0 ${MEM0} -> final ${MEMF} MiB (${checks} checkpoint(s); window too short for a steady-state rate — informational, not gated)"
+fi
 echo "==> cleanup"; cleanup
 [[ "$fail" -eq 0 ]] && echo "RESULT: PASS" || { echo "RESULT: FAIL"; exit 1; }

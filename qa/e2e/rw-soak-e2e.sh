@@ -99,11 +99,12 @@ verify_round() {
 
 pm_health() { # since <secs> -> "wrerr abort tsm storm crash"
   local log; log=$(docker logs --since "${1}s" "$PM" 2>&1)
-  echo "$(grep -ciE 'write.?property.*(error|fail|reject)|reject.*writ' <<<"$log") \
+  echo "$(grep -ciE 'write.?property.*(error|fail|reject)|reject.*writ|write failed' <<<"$log") \
 $(grep -ciE 'Buffer Overflow' <<<"$log") $(grep -ciE 'max concurrency|encode failed' <<<"$log") \
 $(grep -ciE 'reconnect|connectlost' <<<"$log") $(grep -ciE 'unhandledrejection|uncaught|fatal' <<<"$log")" | tr -s ' '
 }
 pm_mem() { docker stats --no-stream --format '{{.MemUsage}}' "$PM" 2>/dev/null | awk '{print $1}'; }
+pm_mem_n() { pm_mem | awk '{m=$1; if(m ~ /GiB/){gsub(/GiB/,"",m); print m*1024} else {gsub(/MiB/,"",m); print m+0}}'; }
 
 cleanup() {
   for dev in $(devs); do
@@ -125,14 +126,20 @@ echo "T0 R/W INTEGRITY: $p/$t exact round-trip ${rest:-}"
 if [[ "$p" != "$t" ]]; then echo "T0 not clean — aborting soak"; cleanup; exit 1; fi
 
 [[ "$SOAK_MIN" -gt 0 ]] || { echo "RESULT: FAIL (SOAK_MIN=$SOAK_MIN — a soak must run at least one round)"; exit 1; }
-echo "==> SOAK ${SOAK_MIN} min, fresh random R/W every ~${ROUND_S}s (mem now: $(pm_mem))"
-fail=0 round=0 deadline=$(( SECONDS + SOAK_MIN * 60 ))
+MEM0=$(pm_mem_n)
+echo "==> SOAK ${SOAK_MIN} min, fresh random R/W every ~${ROUND_S}s (mem now: ${MEM0} MiB)"
+fail=0 round=0 deadline=$(( SECONDS + SOAK_MIN * 60 )); soak_start=$SECONDS; MEM_BASE=""; BASE_T=0; MEM_LAST=""; LAST_T=0
 while (( SECONDS < deadline )); do
   round=$(( round + 1 )); t0=$SECONDS
   prev_exp="$exp"; exp="$(write_round <<<"$prev_exp")"; sleep $(( POLL_MS / 1000 + 2 ))
   read -r p t rest <<<"$(verify_round <<<"$exp")"
   read -r we ab tsm st cr <<<"$(pm_health $(( SECONDS - t0 + 4 )))"
   el=$(( SECONDS - t0 )); mem=$(pm_mem)
+  memn=$(awk -v m="$mem" 'BEGIN{if(m~/GiB/){sub(/GiB/,"",m);print m*1024}else if(m~/MiB/){sub(/MiB/,"",m);print m+0}else{print ""}}')
+  if [ -n "$memn" ]; then   # empty = a docker-stats hiccup, skip the sample
+    [[ -z "$MEM_BASE" && $(( SECONDS - soak_start )) -ge 300 ]] && { MEM_BASE=$memn; BASE_T=$SECONDS; }
+    MEM_LAST=$memn; LAST_T=$SECONDS
+  fi
   ok="OK"; { [[ "$p" != "$t" ]] || [[ "$tsm" -gt 0 ]] || [[ "$cr" -gt 0 ]] || [[ "$we" -gt 0 ]]; } && { ok="DEGRADED"; fail=1; }
   printf '  [r%03d +%dm] rw %s/%s | wrerr %s abort %s tsm %s storm %s crash %s | %ds mem %s | %s%s\n' \
     "$round" "$(( (deadline - SECONDS) >= 0 ? (SOAK_MIN - (deadline - SECONDS + 59)/60) : SOAK_MIN ))" \
@@ -140,7 +147,20 @@ while (( SECONDS < deadline )); do
   (( SECONDS - t0 < ROUND_S )) && sleep $(( ROUND_S - (SECONDS - t0) ))
 done
 
-echo "==> SOAK DONE — $round rounds, $(( round * N * 3 )) write+read verifications, final mem $(pm_mem)"
+MEMF=$(pm_mem_n)
+echo "==> SOAK DONE — $round rounds, $(( round * N * 3 )) write+read verifications, final mem ${MEMF} MiB"
+# Leak check — the round gate above is memory-blind. Measure STEADY-STATE growth from the
+# first post-warm-up sample (>=5 min in) to the last, so the one-time deploy ramp isn't counted.
+MEM_WARN_RATE=${MEM_WARN_RATE:-15}; MEM_FAIL_RATE=${MEM_FAIL_RATE:-50}   # MiB/hour (50/h ~ 1.2 GiB/day)
+win=$(( (LAST_T - BASE_T) / 60 ))
+if [[ "$win" -ge 10 && "$MEM_BASE" =~ ^[0-9.]+$ && "$MEM_LAST" =~ ^[0-9.]+$ ]]; then
+  rate=$(awk "BEGIN{printf \"%.1f\", ($MEM_LAST-$MEM_BASE)/($win/60)}")
+  echo "==> MEM TREND (steady-state, post-ramp): ${MEM_BASE} -> ${MEM_LAST} MiB over ${win}m = ${rate} MiB/hour (warn>${MEM_WARN_RATE}, fail>${MEM_FAIL_RATE})"
+  awk "BEGIN{exit !($rate > $MEM_FAIL_RATE)}" && { echo "MEM LEAK: ${rate} MiB/hour exceeds ${MEM_FAIL_RATE}"; fail=1; }
+  awk "BEGIN{exit !($rate > $MEM_WARN_RATE && $rate <= $MEM_FAIL_RATE)}" && echo "MEM WARN: ${rate} MiB/hour — confirm it plateaus over a longer soak before sign-off"
+else
+  echo "==> MEM TREND: T0 ${MEM0} -> final ${MEMF} MiB (no >=10-min post-warm-up window; informational, not gated)"
+fi
 echo "==> cleanup"; cleanup
 # A PASS with zero rounds is not a soak — require at least one verified round.
 if [[ "$fail" -eq 0 && "$round" -ge 1 ]]; then echo "RESULT: PASS"; else echo "RESULT: FAIL (round=$round)"; exit 1; fi

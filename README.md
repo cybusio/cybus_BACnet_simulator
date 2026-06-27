@@ -38,7 +38,7 @@ harness lives entirely under **`qa/`** and all reference docs under **`docs/`**.
 | **`qa/inproc/`** | in-process tests (no CW) | `qa-trio/` (realism suites driven directly against the sims) + `device_profiles.py`, `test_factory.py`, `soak_monitor.py` |
 | **`qa/scf/`** | committed **scenario SCFs** | per-test connection+receive pairs (`lifecycle/` `cadence/` `abort/` `rw/` `discovery/` `miele/`) + `zz_objectlist.yml`. Device SCFs are generated on demand, not committed |
 | **`qa/gen/`** | fleet generators | `gen-*` build the soak fleets' sim profiles + composes on demand |
-| **`qa/tools/`** | helpers + manual onboarding | `cw-clean-all`, `deploy-scfs`; plus `generate-scf`/`verify` (manual, **NOT** used by the battery) |
+| **`qa/tools/`** | helpers + manual onboarding | `cw-clean-all`, `deploy-scfs`, `mqtt-env` (TLS/prod connection env — see TESTING.md R7); plus `generate-scf`/`verify` (manual, **NOT** used by the battery) |
 | **`qa/soak/`** | auxiliary soaks | `ws-*-soak`, `memory-qualify` (not in the cert battery) |
 | **`qa/bbmd/`** | BBMD sink | `bbmd_service.py` (FDR sink, loopback only) |
 | *— reference (`docs/`) —* | | |
