@@ -253,12 +253,14 @@ SOAK_MIN=30 bash qa/e2e/rw-soak-e2e.sh            # quick smoke: SOAK_MIN=2 ROUN
 Each round writes fresh random REAL/UINT/BOOL to all writable points, reads back,
 asserts an **exact round-trip**; DEGRADED on any mismatch / `tsm>0` / write-error>0.
 
-✓ Pass: each ends with `RESULT: PASS` **and** the printed per-checkpoint `mem` holds
-flat — final ≈ the T0 figure, no monotonic climb across the window. (Prints `RESULT:
-FAIL`, exits non-zero, on any value mismatch, stuck transaction, or write error.) The
-`SOAK_MIN=5` / `SOAK_MIN=2` quick modes are a **smoke pre-check only** — a
-production-tier sign-off needs the full `SOAK_MIN=30` runs, since a leak or slow drift
-only surfaces over the full window.
+✓ Pass: each ends with `RESULT: PASS` — the script gates on value-mismatch / `tsm` /
+`crash` (it does **not** assert memory, abort, or storm counters). A leak is therefore
+**not** caught automatically: you must **read the printed per-checkpoint `mem` yourself**
+and confirm it holds flat (final ≈ T0, no monotonic climb). (`RESULT: FAIL`, non-zero
+exit, on any value mismatch, stuck transaction, or write error.) The `SOAK_MIN=5` /
+`SOAK_MIN=2` quick modes are a **smoke pre-check only** — a production-tier sign-off
+needs the full `SOAK_MIN=30` runs, read by hand, since a leak or slow drift only
+surfaces over the full window.
 
 ✗ If `RESULT: FAIL`: the per-checkpoint lines show which device/value diverged.
 Capture them + the adapter log + the final `mem` figure, and file a defect.
@@ -376,7 +378,7 @@ PROFILES), the **integrity oracle**, and the production feature it breaks.
 | **P3 — ABORT/REJECT classification** (no storm) | `abort-recovery-e2e.sh` + qa-trio `caveat-boundaries-test.js` | array on recoverable size-codes → recovers; scalar surfaces `abortReason` and **stays connected**; non-recovered abort raises no storm; unknown object **must NOT flow**. **Reveals misclassifying alive-but-limited as connection loss.** |
 | **P4 — Lifecycle / idle silent-drop / reconnect** (CI-untested) | `lifecycle-e2e.sh` + qa-trio `reconnect-test.js`; qa-trio `cadence-test.js` | **`docker stop` the peer with no reads in flight** → idle health-probe detects silent drop → `reconnecting` → `docker start` → recovers → live read post-recovery → clean disconnect; cadence: first-poll jitter, polling **STOPS after disconnect (0 orphan polls)**. **Reveals the idle health-check path + timer leak.** |
 | **P5 — Write integrity** (exact round-trip, 30 min) | `rw-soak-e2e.sh` | fresh random REAL/UINT/BOOL each round, exact round-trip; DEGRADED on any mismatch / `tsm>0` / write-error>0. **Reveals forced-tag, multi-value, payload-shaping, silent write-drop bugs.** |
-| **P6 — Scale + soak** (no leak, 30 min) | `scale-soak-e2e.sh`; `soak_monitor.py`; qa-trio `scale-integrity-test.js` | **EXACT value-match** every receive, re-verify all devices every 5 min; the printed `mem` holds flat (final ≈ T0, no climb) with `abort/tsm/storm/crash = 0` at every `[+Nm]` checkpoint; fingerprinted, **ZERO mismatch**; **legacy IID silent = FAIL** (p99 latency is a separate oracle — see P7/Step 3). **Reveals corruption-under-load, leak, TSM exhaustion, cross-talk.** |
+| **P6 — Scale + soak** (no leak, 30 min) | `scale-soak-e2e.sh`; `soak_monitor.py`; qa-trio `scale-integrity-test.js` | **EXACT value-match** every receive, re-verify all devices every 5 min; `RESULT: FAIL` gates on integrity-mismatch / `tsm>0` / `crash>0` **only** — the printed `abort`/`storm` counters and `mem` are for human review, **not** asserted by the script; fingerprinted, **ZERO mismatch**; **legacy IID silent = FAIL**. The `p99<1500ms` latency oracle lives in `scale-integrity-test.js` (Step 3 qa-trio). **Reveals corruption-under-load, leak, TSM exhaustion, cross-talk.** |
 | **P7 — Constrained-device adaptivity & isolation** | `isolation-e2e.sh` + `cadence-e2e.sh` (numeric slow-peer oracle lives in Step 3 qa-trio `factory-storm-test.js`) | isolation: healthy peer keeps full MQTT cadence despite slow+bogus neighbours (script-asserted, green `RESULT`); cadence: first polls jitter-spread, steady ~1 msg/interval, PM RSS flat (<25 MiB) — all printed (`spread=… min msgs/topic=… mem …→…`). The numeric isolation oracle (`modern ≥45/50 ok, p99<2000ms`) is asserted **and printed** by `factory-storm-test.js` in **Step 3**, not by these e2e. Constrained-APDU scalars fit without needless indexed reads. **Reveals APDU adaptivity, bounded queue, slow-peer isolation.** |
 | **P8 — Cert / production realism** (real-SCF) | `miele-spectrum-e2e.sh`; qa-trio `weatherstation-test.js` | classifies FLOW/GRACEFUL/DEGRADED/FAIL: FLOW needs `/combined` with exact engineering units; missing one point yields **actionable errors** (`not present on device`) with no faked data, other points keep flowing. **Reveals describeBacnetError + graceful-missing-point + mapping correctness.** |
 
