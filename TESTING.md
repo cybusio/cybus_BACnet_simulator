@@ -264,16 +264,16 @@ SOAK_MIN=30 bash qa/e2e/rw-soak-e2e.sh            # quick smoke: SOAK_MIN=2 ROUN
 Each round writes fresh random REAL/UINT/BOOL to all writable points, reads back,
 asserts an **exact round-trip**; DEGRADED on any mismatch / `tsm>0` / write-error>0.
 
-✓ Pass: each ends with `RESULT: PASS` (which gates on value-mismatch / `tsm` / `crash`).
-The soak also prints `MEM TREND: M0 -> MF MiB = R MiB/hour` and **fails** on an egregious
-sustained rate (`R > MEM_FAIL_RATE`, default 50/h, measured post-ramp over a steady window — ≥15 min scale-soak, ≥10 min rw-soak), **warns** on a
-borderline one (`R > MEM_WARN_RATE`, default 15/h). A `MEM WARN` is not a hard fail — read
-the per-checkpoint `mem` and confirm it plateaus (final ≈ T0, no monotonic climb) before
-sign-off. (`RESULT: FAIL` also on value mismatch / stuck transaction / write error; abort
-and storm are printed, not gated.) The `SOAK_MIN=5` / `SOAK_MIN=2` quick modes are a
-**smoke pre-check only** — a production-tier sign-off needs the full `SOAK_MIN=30` runs,
-since a leak or slow drift only
-surfaces over the full window.
+✓ Pass — each soak ends with `RESULT: PASS`:
+- **`RESULT: PASS` / `FAIL`** — `FAIL` on value-mismatch, stuck transaction (`tsm`), `crash`,
+  or write-error. (Abort and storm counters are printed, not gated.)
+- **`MEM TREND: M0 -> MF MiB = R MiB/hour`** — **fails** on an egregious sustained rate
+  (`R > MEM_FAIL_RATE`, default 50/h; measured post-ramp over a steady window — ≥15 min
+  scale-soak, ≥10 min rw-soak); **warns** on a borderline one (`R > MEM_WARN_RATE`, default 15/h).
+- A **`MEM WARN` is not a hard fail** — read the per-checkpoint `mem` and confirm it plateaus
+  (final ≈ T0, no monotonic climb) before sign-off.
+- **Quick modes (`SOAK_MIN=5` / `SOAK_MIN=2`) are a smoke pre-check only** — a production-tier
+  sign-off needs the full `SOAK_MIN=30` runs (a leak or slow drift only surfaces over the full window).
 
 ✗ If `RESULT: FAIL`: the per-checkpoint lines show which device/value diverged.
 Capture them + the adapter log + the final `mem` figure, and file a defect.
@@ -302,12 +302,16 @@ echo "$W" | grep -ciE 'unhandledrejection|uncaught|fatal'       # crash       �
 echo "$W" | grep -ciE 'maximum concurrency reached'             # TSM exhaustion — MUST be 0
 ```
 
-Always use relative `--since "300s"`, **never** `--since "$(date …)"` (timezone
-mis-parse). **Standard:** every `40` line matches a row in **R1**; the `50`/`60`
-count is **0**; no crash/restart; `docker stats` memory flat under soak. Anything
-else is a finding even if the test said pass. (A `40`-level ABORT that names
-`Buffer Overflow` / `Application Exceeded Reply Time` is the benign recovered abort
-in R1 — that's why the TSM check matches only the exact `Maximum concurrency reached`.)
+Always use relative `--since "300s"`, **never** `--since "$(date …)"` (timezone mis-parse).
+
+**The standard — anything else is a finding, even if the test said pass:**
+- every `40` (warn) line matches a row in **R1**,
+- the `50` / `60` (error / fatal) count is **0**,
+- no crash / restart,
+- `docker stats` memory flat under soak.
+
+(A `40`-level ABORT naming `Buffer Overflow` / `Application Exceeded Reply Time` is the benign
+recovered abort in R1 — that's why the TSM check matches only the exact `Maximum concurrency reached`.)
 
 ---
 
@@ -552,9 +556,11 @@ instance). Per-device facts (ports, instances) are in `docs/PROFILES.md`.
 | `rw-soak-e2e.sh` | `qa/scf/miele/connection_bacnet.yaml` + `qa/scf/rw/rw_recv.yaml` | `compose/rw-fleet.compose.yaml` | 30-min write→readback integrity |
 | `write-depth-e2e.sh` | `qa/scf/miele/connection_bacnet.yaml` + `qa/scf/rw/rw_recv.yaml` | a `rw-dev` (`compose/rw-fleet.compose.yaml`) + `bacnet-abort-storm` | write round-trip + a failed write warns (`Write failed because:`) + aborting device stays connected |
 
-**Helpers:** `cw-clean-all.sh` (wipe all CW services) · `verify.sh <cw-host> <scf>`
-(deploy one SCF, check MQTT + log → `PASS: All endpoints publishing`) ·
-`deploy-scfs.sh` (bulk deploy+enable) · `generate-scf.sh <ip> <profile|--all> [name]`.
+**Helpers:**
+- `cw-clean-all.sh` — wipe all CW services
+- `verify.sh <cw-host> <scf>` — deploy one SCF, check MQTT + log → `PASS: All endpoints publishing`
+- `deploy-scfs.sh` — bulk deploy + enable
+- `generate-scf.sh <ip> <profile|--all> [name]` — generate a deployable SCF from a sim profile
 
 ### R2.1 — exact SCFs uploaded & service IDs enabled, per script
 
@@ -645,11 +651,13 @@ it isn't committed). `cw-clean-all.sh` wipes all CW services between runs.
 
 ## R4. What the adapter can and can't do
 
-**Can:** read/write any of the 60 BACnet object types and any property, by name,
-on a poll (default 1000 ms, min 100 ms, or cron) · typed values (REAL→number,
-ENUMERATED→text like `"active"`, OBJECT_ID→`{type,instance}`, etc.) · write
-priority 1–16, `null` to relinquish · auto-recover big arrays · BBMD for remote
-subnets · auto-reconnect on lost link.
+**Can:**
+- read/write any of the 60 BACnet object types and any property, by name, on a poll (default 1000 ms, min 100 ms, or cron)
+- typed values — REAL→number, ENUMERATED→text like `"active"`, OBJECT_ID→`{type,instance}`, etc.
+- write priority 1–16, `null` to relinquish
+- auto-recover big arrays
+- BBMD for remote subnets
+- auto-reconnect on lost link
 
 **Can't — and why it matters:**
 
