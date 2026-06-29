@@ -2,8 +2,7 @@
 
 The single, step-by-step run guide for the Connectware 2.x BACnet/IP adapter
 (polling-only: ReadProperty Tier-1 + ReadRange/indexed Tier-2 array recovery; no
-RPM, no read-cache; no COV). **Part 1** is the procedure a junior QA engineer
-follows to certify a build (do this, in this order). **Part 2** is the rigorous
+RPM, no read-cache; no COV). **Part 1** is the procedure to certify a build (do this, in this order). **Part 2** is the rigorous
 deep tier (P1–P8) for production validation. **Part 3** is reference — look things
 up when a step needs it.
 
@@ -15,12 +14,23 @@ questions: *did the data come through correctly?* and *was the log clean (no
 **Applies to:** Connectware 2.0 BACnet/IP adapter, branch
 `CC-4157-pm-support-bacnet-messages-big`.
 
+> **Verifying CC-4157.** The ticket's headline is **large-message handling** — oversized
+> arrays and object-lists recovered via ReadRange/indexed chunking. Its load-bearing evidence
+> is three tiers: **Step 1** (the 1041-test CI suite, incl. the array-recovery stack tests),
+> **P1 spectrum** (typed-value marshalling across every datatype / APDU / abort), and **P2 —
+> Large-array recovery >1476, the *primary deliverable*** (full ordered baseline, 0 corrupt, at
+> 1k and 20k objects). Everything else here is the surrounding robustness (lifecycle, abort,
+> write round-trip, isolation, soak). **Minimum to certify the ticket: Step 1 → P1 → P2;** the
+> full battery is for production sign-off.
+
 ```
 Level / Part      What                         Needs            Time
 Part 1 Step 1     npm run test:bacnet (CI)     no sim, no CW    ~5 min
+Part 1 Step 2     start the simulators         docker only      ~1 min
 Part 1 Step 3     qa-trio                      sims, no CW      ~mins
 Part 1 Step 4     *-e2e.sh scripts             sims + CW + MQTT ~per script
 Part 1 Step 5     scale-soak / rw-soak         sims + CW + MQTT 30 min each
+Part 1 Step 6     functional verify + sign off sims + CW + MQTT ~mins
 Part 2 P1–P8      the rigorous deep tier       sims + CW + MQTT ~1–2 h full
 ```
 

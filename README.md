@@ -15,7 +15,7 @@ harness lives entirely under **`qa/`** and all reference docs under **`docs/`**.
 
 | I want to… | Go to |
 |---|---|
-| **run the QA tests** (CI smoke → qa-trio → CW/SCF/MQTT e2e → soaks → deep tier) | **[TESTING.md](TESTING.md)** — the single step-by-step guide |
+| **run the QA tests** (CI smoke → qa-trio → CW/SCF/MQTT e2e → soaks → deep tier) | **[TESTING.md](TESTING.md)** — the single step-by-step guide; certifies **CC-4157** (minimum Step 1 → P1 → P2) |
 | **add** a device / profile / SCF / test | **[CONTRIBUTING.md](CONTRIBUTING.md)** — the conventions |
 | know a device's **port / objects / abort behaviour** | **[docs/PROFILES.md](docs/PROFILES.md)** — single source of truth |
 | see **what's tested** (coverage matrix) | [docs/TEST-MATRIX.md](docs/TEST-MATRIX.md) |
@@ -25,7 +25,7 @@ harness lives entirely under **`qa/`** and all reference docs under **`docs/`**.
 
 | Path | What it is | Purpose |
 |---|---|---|
-| **`TESTING.md`** | the QA run guide | the one doc a QA engineer follows to certify a build |
+| **`TESTING.md`** | the QA run guide | the one doc to certify a build |
 | **`CONTRIBUTING.md`** | conventions | how to add a device / profile / SCF / e2e or qa-trio test |
 | *— the simulator (repo root) —* | | |
 | **`src/` · `tests/` · `Dockerfile` · `pyproject.toml`** | the **simulator** | the Python/bacpypes BACnet server, its pytest unit tests, and the image build |
