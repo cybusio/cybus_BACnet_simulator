@@ -246,6 +246,7 @@ concentrators), both required:
 ```bash
 bash qa/gen/gen-scale-fleet.sh                    # generates 28 synth profiles + compose/scale-fleet.compose.yaml
 docker compose -f compose/scale-fleet.compose.yaml up -d   # 28 synthetic meter devices  (the 70 synthetic receives)
+bash qa/gen/gen-miele-profiles.sh                 # generates the 4 Miele profiles + compose/miele-fleet.compose.yaml
 docker compose -f compose/miele-fleet.compose.yaml  up -d  # 4 real Miele concentrators   (the 36 real receives)
 until [ "$(docker ps --filter health=healthy --format '{{.Names}}' | grep -c scale-synth)" -ge 28 ]; do sleep 3; done   # wait until sims answer (a few s after 'healthy')
 SOAK_MIN=30 bash qa/e2e/scale-soak-e2e.sh         # exact value-match at T0 + every 5 min; quick: SOAK_MIN=5
@@ -265,7 +266,7 @@ asserts an **exact round-trip**; DEGRADED on any mismatch / `tsm>0` / write-erro
 
 ✓ Pass: each ends with `RESULT: PASS` (which gates on value-mismatch / `tsm` / `crash`).
 The soak also prints `MEM TREND: M0 -> MF MiB = R MiB/hour` and **fails** on an egregious
-sustained rate (`R > MEM_FAIL_RATE`, default 50/h, measured post-ramp over a ≥15-min steady window), **warns** on a
+sustained rate (`R > MEM_FAIL_RATE`, default 50/h, measured post-ramp over a steady window — ≥15 min scale-soak, ≥10 min rw-soak), **warns** on a
 borderline one (`R > MEM_WARN_RATE`, default 15/h). A `MEM WARN` is not a hard fail — read
 the per-checkpoint `mem` and confirm it plateaus (final ≈ T0, no monotonic climb) before
 sign-off. (`RESULT: FAIL` also on value mismatch / stuck transaction / write error; abort
@@ -436,11 +437,14 @@ docker compose -f compose/reconnect.compose.yaml up -d
 qa/e2e/lifecycle-e2e.sh                                  # expect: ==> RESULT: N passed, 0 failed
 
 # P5 — write soak 30 min  (quick: SOAK_MIN=2 ROUND_S=15 qa/e2e/rw-soak-e2e.sh)
+bash qa/gen/gen-rw-fleet.sh
 docker compose -f compose/rw-fleet.compose.yaml up -d
 qa/e2e/rw-soak-e2e.sh                                    # expect: RESULT: PASS (+ MEM TREND line)
 qa/e2e/write-depth-e2e.sh                                # expect: RESULT: 3 passed, 0 failed (write round-trip + failed-write warn + aborting device stays connected)
 
 # P6 — scale soak 30 min  (quick: SOAK_MIN=5 qa/e2e/scale-soak-e2e.sh)
+bash qa/gen/gen-scale-fleet.sh
+bash qa/gen/gen-miele-profiles.sh
 docker compose -f compose/scale-fleet.compose.yaml -f compose/miele-fleet.compose.yaml up -d   # synth meters + real concentrators
 qa/e2e/scale-soak-e2e.sh                                 # expect: RESULT: PASS
 
